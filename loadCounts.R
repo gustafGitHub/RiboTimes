@@ -215,7 +215,7 @@ setMethod(f = "getHighestExpressedGenes",
             numberCounts = numeric(numberGenes)
             geneIndex = 1:numberGenes
             for(j in 1:numberGenes){
-              numberCounts[j] = sum(C@countsPerCodon[[1]][[j]])
+              numberCounts[j] = sum(C@countsPerCodon[[1]][[j]])/length(C@countsPerCodon[[1]][[j]])
             }
             highestExpressed <- sort.int(numberCounts, index.return=TRUE, decreasing = TRUE)
             theObject@highestExpressedGenes = highestExpressed$ix
