@@ -147,6 +147,17 @@ codonToIndex2 <- function(gene){
   return(codonIndex)
 }
 
+codonToIndexVar <- function(gene, codons){
+  
+  codonIndex = integer(0)
+  
+  lengthGene = length(gene)
+  for (i in 1:lengthGene){
+    codonIndex[i]=as.integer(charmatch(gene[i],codons,0))
+  }
+  return(codonIndex)
+  
+}
 
 codonsIndexCount <- function(codonIndex){
   codonCount = integer(0)
