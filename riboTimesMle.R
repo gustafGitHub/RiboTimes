@@ -29,6 +29,7 @@ MleInitiate <- function(CountsObj){
   pNumber = 15
   posAsite = 8
   cNumber = 64
+  rowLenght = pNumber * cNumber
   
   Omega_exp = matrix(nrow = pNumber, ncol = cNumber, data = 0)
   n_ipc = array(dim = c(ngenes, pNumber, cNumber), data = 0)
@@ -81,7 +82,9 @@ MleInitiate <- function(CountsObj){
   }
 
   
-  maxIter = 1
+  maxIter = 10
+  
+  deltaZ = 1e-22
   
   z_next = matrix(nrow = pNumber, ncol = cNumber, data = 1)
   
@@ -106,16 +109,13 @@ MleInitiate <- function(CountsObj){
           sum_i = sum_i + U_exp[i]*n_ipc[i, p, cc] / sum_c
         }
         z_next[p, cc] = Omega[p, cc]/sum_i
-        #browser()
       }
       
     }
     
-    #browser()
-    
     # Normalize
     
-    z_temp = z_next
+    
     
     for(p in 1:pNumber){
       mu_new[p] = 0
@@ -127,7 +127,6 @@ MleInitiate <- function(CountsObj){
           j_relAsite = j + posAsite - 1
           codonIndex_p = codonIndex[j_relAsite + p - posAsite]
           tGeneElong = tGeneElong + z_next[p, codonIndex_p]
-          #browser()
         }
         mu_new[p] = mu_new[p] + U_exp[i] /  tGeneElong
       }
@@ -135,16 +134,14 @@ MleInitiate <- function(CountsObj){
         
         coffB = mu_new[p] / mu_initial
         z_next[p, c] = z_next[p, c] * coffB
-        browser()
+        if(is.nan(z_next[p, c])){z_next[p, c] = 0}
       }
     }
     
+    diff = sum((z_next - z_previous)^2)/rowLenght
+    if(diff < deltaZ){break}
     
   }
-  
-  
-  
-  
   
   MleObj <- new("MleClass")
   
@@ -154,21 +151,6 @@ MleInitiate <- function(CountsObj){
   MleObj@pNumber = as.integer(pNumber)
   MleObj@ngenes = as.integer(ngenes)
   MleObj@z_initial = z_next
-  
-  return(MleObj)
-  
-}
-
-initialGuess <- function(MleObj){
- 
-  Omega = MleObj@Omega
-  U = MleObj@U
-  n_ipc = MleObj@n_ipc
-  cNumber = MleObj@cNumber
-  pNumber = MleObj@pNumber
-  ngenes = MleObj@ngenes
-  
-
   
   return(MleObj)
   
@@ -201,7 +183,10 @@ UnitTests <- function(MleObj){
   
   test2 = sum(U - U_ref) == 0
   
-  testaAll = c(test1, test2)
+  z_initial = read.table("./data/zInitial.txt")
+  test3 = sum(round(1e8*Mle@z_initial) - round(1e8*z_initial)) == 0
+  
+  testaAll = c(test1, test2, test3)
   
   return(testaAll)
   
