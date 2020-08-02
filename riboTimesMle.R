@@ -11,9 +11,11 @@ MleInitiate <- function(CountsObj){
   
   MleClassInstance <- setClass("MleClass", 
                    
-                   representation("Omega" = "matrix", "U" = "numeric"), 
+                   representation("Omega" = "matrix", "U" = "numeric", "cNumber" = "integer",
+                                  "pNumber" = "integer", "ngenes" = "integer", "z_initial" = "matrix"), 
                    
-                   prototype("Omega" = matrix(0), "U" = 0
+                   prototype("Omega" = matrix(0), "U" = 0, "cNumber" = integer(0), "pNumber" = integer(0),
+                             "ngenes" = integer(0), "z_initial" = matrix(0)
                              ), 
                    
                    contains = "loadCountsTable") 
@@ -26,10 +28,18 @@ MleInitiate <- function(CountsObj){
   
   pNumber = 15
   posAsite = 8
-  ncodons = 64
+  cNumber = 64
   
-  Omega_exp = matrix(nrow = pNumber, ncol = ncodons, data = 0)
+  Omega_exp = matrix(nrow = pNumber, ncol = cNumber, data = 0)
+  n_ipc = array(dim = c(ngenes, pNumber, cNumber), data = 0)
+  #n_ipc2 = array(dim = c(ngenes, pNumber, cNumber), data = 0)
   delta_c_seq_i = list()
+  
+  #tGeneElong = matrix(nrow = pNumber, ncol = ngenes, data = 0)
+  muCoff = matrix(nrow = pNumber, ncol = cNumber, data = 0)
+  zHat = matrix(nrow = pNumber, ncol = cNumber, data = 0)
+  mu_initial = 0
+  mu_new = 0
   
   
   for(i in 1:ngenes){
@@ -38,8 +48,11 @@ MleInitiate <- function(CountsObj){
     U_exp[i] = 0
     length_gene = length(CountsObj@countsPerCodon[[i]])
     counts_gene = CountsObj@countsPerCodon[[i]]
-    delta_c_seq_i = matrix(nrow = length(counts_gene), ncol = pNumber*ncodons)
+    delta_c_seq_i = matrix(nrow = length(counts_gene), ncol = pNumber * cNumber)
     codonIndex = CountsObj@codonIndex[[i]]
+    tGeneElong1 = length_gene - pNumber
+    
+    n_pc = matrix(nrow = pNumber, ncol = cNumber, data = 0)
     
     for(j in 1:(length_gene - pNumber)){
       # Calculate Omega_exp
@@ -56,55 +69,108 @@ MleInitiate <- function(CountsObj){
         codonIndex_p = codonIndex[p]
         
         Omega_exp[k, codonIndex_p] = Omega_exp[k, codonIndex_p] + counts_j
+        n_pc[k, codonIndex_p] = n_pc[k, codonIndex_p] + 1
+
+      }
+      
+    }
+    
+    mu_initial = mu_initial + U_exp[i]/tGeneElong1
+    n_ipc[i,,] = n_pc
+    
+  }
+
+  
+  maxIter = 1
+  
+  z_next = matrix(nrow = pNumber, ncol = cNumber, data = 1)
+  
+  for(n_iter in 1:maxIter){
+    
+    z_previous = z_next
+    
+    for(p in 1:pNumber){
+      for(cc in 1:cNumber){
         
+        sum_i = 0
+        for(i in 1:ngenes){
+          
+          sum_c = 0
+          n_ipc_temp = n_ipc[i, p,]
+          for(c in 1:cNumber){
+            
+            sum_c = sum_c + z_previous[p, c] * n_ipc_temp[c]
+            
+          }
+          
+          sum_i = sum_i + U_exp[i]*n_ipc[i, p, cc] / sum_c
+        }
+        z_next[p, cc] = Omega[p, cc]/sum_i
+        #browser()
+      }
+      
+    }
+    
+    #browser()
+    
+    # Normalize
+    
+    z_temp = z_next
+    
+    for(p in 1:pNumber){
+      mu_new[p] = 0
+      for(i in 1:ngenes){
+        length_gene = length(CountsObj@countsPerCodon[[i]])
+        codonIndex = CountsObj@codonIndex[[i]]
+        tGeneElong = 0
+        for(j in 1:(length_gene - pNumber)){
+          j_relAsite = j + posAsite - 1
+          codonIndex_p = codonIndex[j_relAsite + p - posAsite]
+          tGeneElong = tGeneElong + z_next[p, codonIndex_p]
+          #browser()
+        }
+        mu_new[p] = mu_new[p] + U_exp[i] /  tGeneElong
+      }
+      for(c in 1:cNumber){
+        
+        coffB = mu_new[p] / mu_initial
+        z_next[p, c] = z_next[p, c] * coffB
+        browser()
       }
     }
     
+    
   }
+  
+  
+  
+  
   
   MleObj <- new("MleClass")
   
   MleObj@Omega = Omega_exp
   MleObj@U = U_exp
+  MleObj@cNumber = as.integer(cNumber)
+  MleObj@pNumber = as.integer(pNumber)
+  MleObj@ngenes = as.integer(ngenes)
+  MleObj@z_initial = z_next
   
   return(MleObj)
   
 }
 
-initialGuess <- function(CountsObj, U_exp, Omega_exp, ncodons, codon_context){
+initialGuess <- function(MleObj){
  
+  Omega = MleObj@Omega
+  U = MleObj@U
+  n_ipc = MleObj@n_ipc
+  cNumber = MleObj@cNumber
+  pNumber = MleObj@pNumber
+  ngenes = MleObj@ngenes
   
-  # Initial guess 
-  z_previous = matrix(nrow = ncodons, ncol = codon_context, data = 1)
 
-  for(p in 1:codon_context){
-    for(c in 1:ncodons){
-      
-      sum_i_expr = 0
-      
-      nipc = CountsObj@CountsPerCodon
-      
-      for(i in 1:ngenes){
-        
-        nipc = CountsObj@CountsPerCodon[[i]]
-        
-        c_sum = 0
-        
-        for(c2 in 1:codon_context){
-          
-          
-          
-        }
-        
-        sum_i_expr_temp = U_exp[i]/(c_sum*nipc)
-        sum_i_expr = sum_i_expr + sum_i_expr_temp
-        
-      }
-      
-      z_next = 1
-      
-    }
-  }
+  
+  return(MleObj)
   
 }
 
