@@ -1,24 +1,25 @@
+library(Rcpp)
+sourceCpp("./C/MleEstimateZ_Pavlov.cpp")
+source("loadCountsTable.R")
 
+MleClassInstance <- setClass("MleClass", 
+                             
+                             representation("Omega" = "matrix", "U" = "numeric", "cNumber" = "integer", 
+                                            "pNumber" = "integer", "mRow" = "integer", "ngenes" = "integer", "z_initial" = "matrix"), 
+                             
+                             prototype("Omega" = matrix(0), "U" = 0, "cNumber" = integer(0), "pNumber" = integer(0),
+                                       "mRow" = integer(0), "ngenes" = integer(0), "z_initial" = matrix(0)
+                             ), 
+                             
+                             contains = "loadCountsTable") 
 
 CountsObj <- function(){
-  source("loadCountsTable.R")
   fileName = "./data/Counts.txt"
   CountsObj<-loadCountsTable(fileName)
   return(CountsObj)
 }
 
 MleInitiate <- function(CountsObj){
-  
-  MleClassInstance <- setClass("MleClass", 
-                   
-                   representation("Omega" = "matrix", "U" = "numeric", "cNumber" = "integer",
-                                  "pNumber" = "integer", "ngenes" = "integer", "z_initial" = "matrix"), 
-                   
-                   prototype("Omega" = matrix(0), "U" = 0, "cNumber" = integer(0), "pNumber" = integer(0),
-                             "ngenes" = integer(0), "z_initial" = matrix(0)
-                             ), 
-                   
-                   contains = "loadCountsTable") 
   
   U_exp = 0
   z_k = 0
@@ -108,7 +109,7 @@ MleInitiate <- function(CountsObj){
           
           sum_i = sum_i + U_exp[i]*n_ipc[i, p, cc] / sum_c
         }
-        z_next[p, cc] = Omega[p, cc]/sum_i
+        z_next[p, cc] = Omega_exp[p, cc]/sum_i
       }
       
     }
@@ -143,6 +144,9 @@ MleInitiate <- function(CountsObj){
     
   }
   
+  mRow = as.integer(0)
+  for(i in 1:length(CountsObj@countsPerCodon)){mRow = mRow + length(CountsObj@countsPerCodon[[i]])}
+  
   MleObj <- new("MleClass")
   
   MleObj@Omega = Omega_exp
@@ -151,6 +155,9 @@ MleInitiate <- function(CountsObj){
   MleObj@pNumber = as.integer(pNumber)
   MleObj@ngenes = as.integer(ngenes)
   MleObj@z_initial = z_next
+  MleObj@codonIndex = C@codonIndex
+  MleObj@countsPerCodon = C@countsPerCodon
+  MleObj@mRow = mRow
   
   return(MleObj)
   
@@ -164,9 +171,20 @@ calculateHessian <- function(){
 }
 
 
-MleAlgorithm <- function(){
+MleAlgorithm <- function(MleObject){
   
+  MleObjectList = list()
   
+  MleObjectList$pNumber = MleObject@pNumber
+  MleObjectList$mRow = MleObject@mRow
+  MleObjectList$ngenes = MleObject@ngenes
+  MleObjectList$countsPerCodon = MleObject@countsPerCodon
+  MleObjectList$codonIndex = MleObject@codonIndex
+  MleObjectList$z_initial = MleObject@z_initial
+  
+  MleListOut = Hes_Pos_ML_Refine_zFactors(MleObjectList)
+  
+  return(MleListOut)
   
 }
 
