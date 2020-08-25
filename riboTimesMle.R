@@ -189,7 +189,7 @@ MleAlgorithm <- function(MleObject){
 }
 
 
-UnitTests <- function(MleObj){
+UnitTests1 <- function(MleObj){
   
   Omega_ref <- read.table("./data/Omega.txt")
   Omega = MleObj@Omega
@@ -204,8 +204,22 @@ UnitTests <- function(MleObj){
   z_initial = read.table("./data/zInitial.txt")
   test3 = sum(round(1e8*Mle@z_initial) - round(1e8*z_initial)) == 0
   
-  testaAll = c(test1, test2, test3)
+  #mH_PS_Pos1 = read.table("./data/mH_PS_Pos1.txt")
+  #test4 = sum(round(1e2*Mle@mH_PS_Pos1) - round(1e2*mH_PS_Pos1))
   
-  return(testaAll)
+  testsAll = c(test1, test2, test3)
   
+  return(testsAll)
+  
+}
+
+UnitTests2 <- function(MleList){
+ 
+  mH_PS_Pos1 = read.table("./data/mH_PS_Pos1.txt")
+  test1 = sum(round(1e2*MleList$mH_PS_Pos1) - round(1e2*mH_PS_Pos1)) == 0
+  
+  testsAll = c(test1)
+  
+  return(testsAll)
+   
 }
