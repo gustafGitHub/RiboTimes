@@ -514,16 +514,22 @@ List FactorLUPA(int iP, NumericMatrix mA){
   
   int mRow = mA.nrow(); 
   int nCol = mA.ncol();
-  int iRowMax, jR;
-  double rRowMax, rRowMaxAbs, rRowAbs, rRow;
+  int iRowMax, jR, j1,iFlag;
+  double rRowMax, rRowMaxAbs, rRowAbs, rRow, mUjj, mLij;
   
   NumericMatrix mU(mRow, nCol);
+  NumericMatrix mU_temp0(mRow, nCol);
+  NumericMatrix mU_temp1(mRow, nCol);
+  NumericMatrix mU_temp2(mRow, nCol);
+  NumericMatrix mL(mRow, nCol);
   NumericVector vP(mRow);
+  NumericVector mUjj_temp(nCol);
 
   // prepare mL and mU matrices
   for(int i = 0; i < mRow; i++){
     for(int j = 0; j < nCol; j++){
       mU(i, j) = mA(i, j);
+      mU_temp0(i, j) = mU(i, j);
     }
     vP(i) = i;
   }
@@ -555,55 +561,70 @@ List FactorLUPA(int iP, NumericMatrix mA){
         rRow = mU(j, k);
         mU(j, k) = mU(iRowMax, k);
         mU(iRowMax, k) = rRow;
+        Rcout << "Here!" << "\n";
       }
     }
     //Find new column j of a low triangular mL matrix
     //The k element of column j mLkj contains elimination coefficients
     //for subtracting row j from from row k creating a zero subcolumn in
       //modified A
-      /*
-      mUjj = mU(j, j): 'get the current pivot
-      j1 = j + 1:
-      If (Abs(mUjj) > epsTol) Then 'run the elimination
-      For i = j1 To nCol
-      mLij = mU(i, j) / mUjj: 'the new component of the column mL
-      mU(i, j) = mLij: 'save elimination coefficients in a low part of mU
-      'subtract row j multiplied by Lij from row i of modified A
-      For k = j1 To mRow
-      mU(i, k) = mU(i, k) - mLij * mU(j, k)
-      Next k
-      Next i
-      Else: 'put real zeroes to stress that mUjj=0 and skip the elimination step
-      iFlag = 2
-    For i = j To nCol
-      mU(i, j) = 0:
-      Next i
-      End If
+
+    mUjj = mU(j, j); //get the current pivot
+    mUjj_temp(j) = mUjj;
+    j1 = j + 1;
+    if (std::abs(mUjj) > epsTol) {//run the elimination
+      for(int i = j1; i < nCol; i++){
+          mLij = mU(i, j) / mUjj; //the new component of the column mL
+          mU_temp1(i, j) = mU(i, j);
+          mU(i, j) = mLij; //save elimination coefficients in a low part of mU
+          mU_temp2(i, j) = mLij;
+          //Rcout << "mU: " << mU(i, j) << " i: " << i << " j: " << j << "\n";
+          //subtract row j multiplied by Lij from row i of modified A
+          for(int k = j1; k < mRow; k++){
+            mU(i, k) = mU(i, k) - mLij * mU(j, k);
+          }
+        }
+      }
+      else{ //put real zeroes to stress that mUjj=0 and skip the elimination step
+        iFlag = 2;
+        for(int i = j; i < nCol; i++){
+          mU(i, j) = 0;
+        }
+      }
+    }
+    // separate mU into mL and mR matrices
+    if(nCol <= mRow){
+      for(int j = 0; j < nCol; j++){
+        for(int i = j + 1; i < mRow; i++){
+          mL(i, j) = mU(i, j);
+          mU(i, j) = 0;
+        }
+        mL(j, j) = 1;
+      }
+    }
+    else{
+    mL(0, 0) = 0;
+    for(int i = 1; i < mRow; i++){
+      for(int j = 0; j < i - 1; j++){
+      mL(i, j) = mU(i, j);
+      mU(i, j) = 0;
+      }
+      for(int j = i; j < nCol; j++){
+        mL(i, j) = 0;
+      }
+      mL(i, i) = 1;
+    }
   }
-    'separate mU into mL and mR matrices
-    If (nCol <= mRow) Then
-    For j = 1 To nCol
-    For i = j + 1 To mRow
-    mL(i, j) = mU(i, j):
-    mU(i, j) = 0:
-    Next i
-    mL(j, j) = 1:
-    Next j
-    Else
-    mL(1, 1) = 0:
-    For i = 2 To mRow
-    For j = 1 To i - 1
-  mL(i, j) = mU(i, j):
-    mU(i, j) = 0:
-    Next j
-    For j = i To nCol
-    mL(i, j) = 0:
-    Next j
-    mL(i, i) = 1
-  Next i
-    End If
-    */
-  }
+  
+  LupaOut["vP"] = vP;
+  LupaOut["mL"] = mL; 
+  LupaOut["mU"] = mU;
+  LupaOut["mU_temp0"] = mU_temp0;
+  LupaOut["mU_temp1"] = mU_temp1;
+  LupaOut["mU_temp2"] = mU_temp2;
+  LupaOut["mUjj_temp"] = mUjj_temp;
+  
+
   return LupaOut;
   
 }
