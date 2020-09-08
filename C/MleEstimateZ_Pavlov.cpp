@@ -31,7 +31,11 @@ List Hes_Pos_ML_Refine_zFactors(List MleObject) {
   
   int kA = 0;
   double t_pAsite;
-  int indCodon;
+  int indCodon, indCod;
+  
+  NumericVector zFP_Refined_long(rowLength);
+  NumericVector zFP_Sigma_Refined_long(rowLength);
+  NumericVector wFP_Refined_long(rowLength);
   
   NumericMatrix zFP_Old(pNumber, cNumber);
   NumericMatrix ijH_A(pNumber, cNumber);
@@ -63,16 +67,23 @@ List Hes_Pos_ML_Refine_zFactors(List MleObject) {
   
   NumericMatrix diag_mH_Full(pNumber,cNumber);
   
+  NumericMatrix muCoff(pNumber,cNumber);
+  NumericMatrix nPosCodInGene(pNumber,cNumber);
+  NumericMatrix diagHM1_Full(pNumber,cNumber);
+  
+  NumericMatrix mU;
+  NumericMatrix mL;
+  NumericVector vP;
+  
   Function FactorLUPA("FactorLUPA");
   Function SolveLUPA("SolveLUPA");
+  Function InvertLUPA("InvertLUPA");
   
   Environment base = Environment("package:base");
   Function readline = base["readline"];
   
   int iA, jA, nPos, j;
-  NumericVector grad_PS(60);
-  NumericMatrix mH_PS(60, 60);
-  NumericMatrix mH_PS_Pos1(60, 60);
+
   
   double zFP_pc;
   
@@ -88,13 +99,19 @@ List Hes_Pos_ML_Refine_zFactors(List MleObject) {
   NumericVector iGradActive(imax);
   NumericVector ijH_Active(imax);
   NumericVector gradActive(imax);
+  NumericVector zPosAverage(pNumber);
   
   double gradActiveNorm;
   double vDir_Norm, gradActive_Norm, vDir_LogLkh_Derivative_Min, cos_vDirOld_GradNew;
+  double vDir_LogLkh_Derivative, cos_vDir_Grad, stepSize;
+  double tLhd_Total_Old, zDiff2, zPosCodDiff, muWeight, zAverTot;
   
   double vDirGradProjection;
   double vDir_Norm2;
   double gradActive_Norm2;
+  double tLhd_delta = 0;
+  double tLhd_Total = 0;
+  double zPosAver, wCodPos, coffB, coffZ;
   
   
   // Refines z-Factors using Position-Diagonal Hessian Approximation  by Marquardt-Like approach
@@ -117,9 +134,20 @@ List Hes_Pos_ML_Refine_zFactors(List MleObject) {
   
   
   int nActive = i;
+  Rcout << "nActive: " << nActive << "\n";
   //Prepare the arrays
-  //int nActiveShort = nActive - pNumber; //The dimention of active subspace
+  int nActiveShort = nActive - pNumber; //The dimention of active subspace
   NumericVector vDir(nActive);
+  NumericVector grad_PS(nActive);
+  NumericMatrix mH_PS(nActive, nActive);
+  NumericMatrix mH_PS_Pos1(nActive, nActive);
+  NumericVector vDir_Short(nActiveShort);
+  NumericVector vDir_PS;
+  NumericVector mHM1;
+  NumericVector gradActive_Short(nActiveShort);
+  
+  List FactorLupaOut;
+  List SolveLupaOut;
   
     //Active movement spase
 
@@ -407,17 +435,287 @@ List Hes_Pos_ML_Refine_zFactors(List MleObject) {
     //Solve  (mH_PS+(alfa-1)*diag_mH_PS)*vDir=gradActive
 
     //FactorLUPA(1, mH_PS, vP, mL, mU); 
-    //List FactorLupaOut, SolveLupaOut;
     
-    //FactorLupaOut = FactorLUPA(mH_PS); //LUP factorise mH_PS
+    FactorLupaOut = FactorLUPA(1, mH_PS); //LUP factorise mH_PS
     //Call Print_LUP_Factors(mH, vP, mL, mU)
     // SolveLUPA(mL, mU, vP, vDir_PS, grad_PS); //Solve to find the direction
     
-    //SolveLupaOut = SolveLUPA(grad_PS); //Solve to find the direction
-      
-    }
+    vDir_PS = FactorLupaOut["vDir_PS"];
+    NumericMatrix mL = FactorLupaOut["mL"];
+    NumericMatrix mU = FactorLupaOut["mU"];
+    vP = FactorLupaOut["vP"];
     
+    grad_PS = SolveLUPA(mL, mU, vP, vDir_PS); //Solve to find the direction
+    
+    // restore gradActive short and vDir_Short
+      //Change  vDir_Short into the oposite, assent direction in the full active space
+    for(int i = 1; i < nPos; i++){
+      k++;
+      vDir_Short(k) = -vDir_PS(i);
+      gradActive_Short(k) = grad_PS(i);
+    }
+    }
+      
+      //Restore vDir and zShift_Long in the full total space
+      iA = 0;
+    for(int i = 0; i < nActive; i++){
+      vDir(i) = 0;
+      if(ijH_Active(i) > 0){
+        iA = iA + 1;
+        vDir(i) = vDir_Short(iA);
+      }
+      k = iGradActive(i);
+      zShift_Long(k) = vDir(i);
+    }
+      
+      // Check vDir direction legibility
+      vDirGradProjection = 0;
+      vDir_Norm2 = 0;
+    gradActive_Norm2 = 0;
+    for(int iA = 0; iA < nActiveShort; iA++){
+      vDirGradProjection = vDirGradProjection + vDir_Short(iA) * gradActive_Short(iA);
+      vDir_Norm2 = vDir_Norm2 + vDir_Short(iA) * vDir_Short(iA);
+      gradActive_Norm2 = gradActive_Norm2 + gradActive_Short(iA) * gradActive_Short(iA);
+    }
+      vDir_Norm = sqrt(vDir_Norm2);
+      gradActive_Norm = sqrt(gradActive_Norm2);
+      
+      vDir_LogLkh_Derivative = vDirGradProjection / vDir_Norm;
+      cos_vDir_Grad = vDir_LogLkh_Derivative / gradActive_Norm;
+      
+    if(cos_vDir_Grad >= 0){
+      stepSize = 0.5 * tLhd_delta / vDir_LogLkh_Derivative;
+      if(std::abs(stepSize) > 0.8){stepSize = 0.8;}
+      
+      if(std::abs(vDirGradProjection) < 1000){
+        alfa = alfa * 0.1;
+        beta = beta * 0.5;
+        stepSize = 0.8;
+      }
+    }
+    else{ //vDir direction is bad, use gradActive direction instead
+      vDirGradProjection = 0;
+      vDir_Norm2 = 0;
+    for(int iA = 0; iA < nActiveShort; iA++){
+      vDir_Short(iA) = gradActive_Short(iA);
+      vDirGradProjection = vDirGradProjection + vDir_Short(iA) * gradActive_Short(iA);
+      vDir_Norm2 = vDir_Norm2 + vDir_Short(iA) * vDir_Short(iA);
+    }
+    vDir_Norm = sqrt(vDir_Norm2);
+    vDir_LogLkh_Derivative = vDirGradProjection / vDir_Norm;
+    stepSize = 0.05 * tLhd_Total / vDirGradProjection; //Try to increase LL by 5%
+      stepSize = stepSize;
+      
+      //Restore vDir and zShift_Long
+      iA = 0;
+    for(int i = 0; i < nActive; i++){
+      vDir(i) = 0;
+      if(ijH_Active(i) > 0){
+      iA = iA + 1;
+      vDir(i) = vDir_Short(iA);
+      }
+      k = iGradActive(i);
+      zShift_Long(k) = vDir(i);
+    }
+    }
+      
+      //record zFP_Old and transform  vector zShift_long into matrix zShift
+      k = 0;
+      for(int iPos = 0; iPos < pNumber; iPos++){
+      for(int indCodon = 0; indCodon < cNumber; indCodon++){
+      zFP_Old(iPos, indCodon) = zFP(iPos, indCodon);
+      k = k + 1;
+    zShift(iPos, indCodon) = zShift_Long(k);
+      }
+      }
+      
+      //Refine stepSize by minimizing log-likelihood along vDir
+      //Call RefineStepSize(jSet, newRPFdata, zFP, tModel, tGeneElong, _
+      //                      tLhd_Total, stepSize, zShift_Long)
+      
+      //Do zFP shift
+      for(int iPos = 0; iPos < pNumber; iPos++){
+        for(int indCodon = 0; indCodon < cNumber; indCodon++){
+        zFP(iPos, indCodon) = zFP_Old(iPos, indCodon) + stepSize * zShift(iPos, indCodon);
+        }
+      }
+      
+      //Get new Log-Likelihood function, new model times and gene times
+      //Call Get_Log_Likelihood_Only(jSet, newRPFdata, zFP, tModel, tGeneElong, tLhd_Total)
+      
+      tLhd_Total_Old = tLhd_Total;
+      
+      zDiff2 = 0;
+    for(int iPos = 0; iPos < pNumber; iPos++){
+      for(int indCodon = 0; indCodon < cNumber; indCodon++){
+        zPosCodDiff = (zFP(iPos, indCodon) - zFP_Old(iPos, indCodon));
+        zDiff2 = zDiff2 + zPosCodDiff * zPosCodDiff;
+      }
+    }
+    zDiff2 = zDiff2 / rowLength;
+      
+      
+    
+    if(stepSize == 0){break;}
   }
+
+    //
+    //Main iteration ends ==================================================
+    //-----------------------------
+    //
+    
+    //Finalize z-factors
+      
+    //Zero muCoff=Effective weights of Codons
+      for(int iPos = 0; iPos < pNumber; iPos++){
+        for(int indCod = 0; indCod < cNumber; indCod++){
+          muCoff(iPos, indCod) = 0;
+        }
+      }
+      
+      muWeight = 0;
+      muNew = 0;
+      muStandard = 0;
+      for(int jGene = 0; jGene < jTot; jGene++){
+        wtFetha = uGeneElong(jGene) / tGeneElong(jGene); //U(j)/T(j)
+        muWeight = muWeight + nCodGeneElong(jGene) * wtFetha;
+        muNew = muNew + wtFetha;
+        muStandard = muStandard + uGeneElong(jGene) / nCodGeneElong(jGene);
+        //jStart = .geneStart(jGene) + jGeneStartShift;
+        jEnd = 0; //.geneEnd(jGene);
+        
+        //Zero nPosCodInGene
+        for(int iPos = 0; iPos < pNumber; iPos++){
+          for(int indCod = 0; indCod < cNumber; indCod++){
+            nPosCodInGene(iPos, indCod) = 0;
+          }
+        }
+        
+        //Obtain nPosCodInGene
+        for(int k = 0; k < jEnd - pNumber; k++){
+          for(int iPos = 0; iPos < pNumber; iPos++){
+          indCod = 0; //.iORFcodons(iPos + k - 1);
+          nPosCodInGene(iPos, indCod) = nPosCodInGene(iPos, indCod) + 1;
+          }
+        }
+        
+        //Use nPosCodInGene to get muCoff=Effective weights of Codons
+        for(int iPos = 0; iPos < pNumber; iPos++){
+          for(int indCod = 0; indCod < cNumber; indCod++){
+          muCoff(iPos, indCod) = muCoff(iPos, indCod) +
+          nPosCodInGene(iPos, indCod) * wtFetha;
+          }
+        }
+      }
+      
+      //Finalize  muCoff=Effective weights of nucleotides
+      for(int iPos = 0; iPos < pNumber; iPos++){
+        for(int indCod = 0; indCod < cNumber; indCod++){
+          muCoff(iPos, indCod) = 1000 * muCoff(iPos, indCod) / muWeight;
+        }
+      }
+      
+      //Get position Hessian and Gradient
+      k = 0;
+    zAverTot = 1;
+    //get the dimentions of the position Hessian
+      for(int iPos = 0; iPos < pNumber; iPos++){
+      iA = 0;
+      for(int indCodon = 0; indCodon < cNumber; indCodon++){
+        i = ijH_A(iPos, indCodon);
+        if(i > 0){
+          iA = iA + 1;
+        }
+      }
+      nPos = iA - 1; //Check
+      
+      
+      //Get Possition Hessian with one position excluded
+      
+      
+      //prepare the diagonal
+      for(int indCodon = 0; indCodon < cNumber; indCodon++){
+        diagHM1_Full(iPos, indCodon) = 0;
+      }
+      
+      
+      for(int kTest = 0; kTest < 1; kTest++){
+        iA = 0;
+        for(int indCodon = 0; indCodon < cNumber; indCodon++){
+          if(indCodon != kTest){
+            i = ijH_A(iPos, indCodon);
+            if(i > 0){
+              iA = iA + 1;
+              jA = 0;
+              for(int iCod = 0; iCod < cNumber; iCod++){
+                if(iCod != kTest){
+                j = ijH_A(iPos, iCod);
+                if(j > 0){
+                  jA = jA + 1;
+                  mH_PS(iA, jA) = mH_Full[iPos][indCodon][iCod];
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      
+      //invert the curtailed position Hessian
+      FactorLupaOut = FactorLUPA(1, mH_PS);
+      NumericMatrix mL = FactorLupaOut["mL"];
+      //Call Print_LUP_Factors(mH_PS, vP, mL, mU)
+      //InvertLUPA(mL, mU, vP, mHM1);
+      mHM1 = InvertLUPA(mL, mU, vP);
+      
+      
+      iA = 0;
+      for(int indCodon = 0; indCodon < cNumber; indCodon++){
+      if(indCodon != kTest){
+      i = ijH_A(iPos, indCodon);
+      if(i > 0){
+      iA = iA + 1;
+      diagHM1_Full(iPos, indCodon) = diagHM1_Full(iPos, indCodon) + mHM1(iA, iA);
+      iA = iA;
+      }
+      }
+      }
+      }
+      
+      for(int kTest = 0; kTest < 1; kTest++){
+        diagHM1_Full(iPos, kTest) = 2 * diagHM1_Full(iPos, kTest);
+      }
+      
+      
+      //Get position averaged z-factors
+      zPosAver = 0;
+      wCodPos = 0;
+      for(int indCod = 0; indCod < cNumber; indCod++){
+        wCodPos = wCodPos + muCoff(iPos, indCod);
+        zPosAver = zPosAver + zFP(iPos, indCod) * muCoff(iPos, indCod);
+      }
+      zPosAverage(iPos) = zPosAver / wCodPos;
+      zAverTot = zAverTot * zPosAverage(iPos);
+      }
+      
+      // Normalization Coffs
+      coffB = muNew / muStandard;
+      coffB = zAverTot * coffB;
+      coffZ = exp(log(coffB) / pNumber);
+      
+      //Finalize the refined z-factors
+      k = 0;
+      for(int iPos = 0; iPos < pNumber; iPos++){
+        zPosAver = zPosAverage(iPos);
+        //coffZ = 1
+        for(int indCod = 0; indCod < cNumber; indCod++){
+          k = k + 1;
+          zFP_Refined_long(k) = coffZ * zFP(iPos, indCod) / zPosAver;
+          zFP_Sigma_Refined_long(k) = coffZ * sqrt(abs(diagHM1_Full(iPos, indCod))) / zPosAver;
+          wFP_Refined_long(k) = muCoff(iPos, indCod);
+        }
+      }
+    
      
     
   output["rpfModel"] = rpfModel;
@@ -436,7 +734,7 @@ List Hes_Pos_ML_Refine_zFactors(List MleObject) {
 }
 
 // [[Rcpp::export]]
-List SolveLUPA(){
+NumericVector SolveLUPA(NumericMatrix mL, NumericMatrix mU, NumericVector vP, NumericVector vB){
   
   //===========================================================================
   //
@@ -449,48 +747,55 @@ List SolveLUPA(){
   //
   //
   
-  List LupaOut;
+  //List LupaOut;
+  int iDim, jDim, j;
+  double jP, vj, mUjj, zj;
   
-  //double zTol = 1E-09;
+  double zTol = 1E-09;
   
-  /*iDim = UBound(mL, 1)
-  jDim = UBound(mL, 2)
+  iDim = mL.nrow();
+  jDim = mL.ncol();
 
-  '
-  ' prepare intermediate vectors
-  '
-  For j = 1 To jDim:
-  v(j) = 0:
-  vX(j) = 0:
-  z(j) = 0:
-  jP = vP(j): 'permutate vb components
-  W(j) = vB(jP):
-  Next j
-  ' get L*v=w solution by forward substitutions
-  For j = 1 To jDim:
-  vj = 0:
-  If (Abs(W(j)) > 0) Then vj = W(j) / mL(j, j):
-  v(j) = vj:
-  If (Abs(vj) > 0) Then
-  For i = j To jDim:
-  W(i) = W(i) - vj * mL(i, j):
-  Next i
-  End If
-  Next j
-  'then solve mU*z=v by backsubstitutions
-  For j = jDim To 1 Step -1
-  mUjj = mU(j, j):
-  zj = 8:
-  If (Abs(mUjj) > zTol) Then zj = v(j) / mUjj:
-  z(j) = zj:
-  vX(j) = zj:
-  For i = 1 To j:
-  v(i) = v(i) - zj * mU(i, j):
-  Next i
-  Next j
-  End Sub */
+  NumericVector v(jDim);
+  NumericVector vX(jDim);
+  NumericVector z(jDim);
+  NumericVector W(jDim);
+  
+  //
+  // prepare intermediate vectors
+  //
+  for(int j = 0; j < jDim; j++){
+    v(j) = 0;
+    vX(j) = 0;
+    z(j) = 0;
+    jP = vP(j); //permutate vb components
+    W(j) = vB(jP);
+  }
+  // get L*v=w solution by forward substitutions
+  for(int j = 0; j < jDim; j++){
+    vj = 0;
+    if(abs(W(j)) > 0){vj = W(j) / mL(j, j);}
+    v(j) = vj;
+    if(abs(vj) > 0){
+      for(int i = j; i < jDim; i++){
+        W(i) = W(i) - vj * mL(i, j);
+      }
+    }
+  }
+  //then solve mU*z=v by backsubstitutions
+  for(int jj = 0; jj < jDim; jj++){
+    j = jDim - jj - 1;
+    mUjj = mU(j, j);
+    zj = 8;
+    if(abs(mUjj) > zTol){zj = v(j) / mUjj;}
+    z(j) = zj;
+    vX(j) = zj;
+    for(int i = 0; i < j; i++){
+      v(i) = v(i) - zj * mU(i, j);
+    }
+  }
 
-  return LupaOut;
+  return vX;
   
 }
 
@@ -518,9 +823,6 @@ List FactorLUPA(int iP, NumericMatrix mA){
   double rRowMax, rRowMaxAbs, rRowAbs, rRow, mUjj, mLij;
   
   NumericMatrix mU(mRow, nCol);
-  NumericMatrix mU_temp0(mRow, nCol);
-  NumericMatrix mU_temp1(mRow, nCol);
-  NumericMatrix mU_temp2(mRow, nCol);
   NumericMatrix mL(mRow, nCol);
   NumericVector vP(mRow);
   NumericVector mUjj_temp(nCol);
@@ -529,7 +831,6 @@ List FactorLUPA(int iP, NumericMatrix mA){
   for(int i = 0; i < mRow; i++){
     for(int j = 0; j < nCol; j++){
       mU(i, j) = mA(i, j);
-      mU_temp0(i, j) = mU(i, j);
     }
     vP(i) = i;
   }
@@ -575,9 +876,7 @@ List FactorLUPA(int iP, NumericMatrix mA){
     if (std::abs(mUjj) > epsTol) {//run the elimination
       for(int i = j1; i < nCol; i++){
           mLij = mU(i, j) / mUjj; //the new component of the column mL
-          mU_temp1(i, j) = mU(i, j);
           mU(i, j) = mLij; //save elimination coefficients in a low part of mU
-          mU_temp2(i, j) = mLij;
           //Rcout << "mU: " << mU(i, j) << " i: " << i << " j: " << j << "\n";
           //subtract row j multiplied by Lij from row i of modified A
           for(int k = j1; k < mRow; k++){
@@ -619,12 +918,481 @@ List FactorLUPA(int iP, NumericMatrix mA){
   LupaOut["vP"] = vP;
   LupaOut["mL"] = mL; 
   LupaOut["mU"] = mU;
-  LupaOut["mU_temp0"] = mU_temp0;
-  LupaOut["mU_temp1"] = mU_temp1;
-  LupaOut["mU_temp2"] = mU_temp2;
-  LupaOut["mUjj_temp"] = mUjj_temp;
   
 
   return LupaOut;
   
+}
+
+List Get_Log_Likelihood(){
+
+  List output;
+  
+/*Sub Get_Log_Likelihood(jSet As Long, newRPFdata As RPFdataSet, zFP() As Double, tModel() As Double, _
+                         tGeneElong() As Double, tLhd_Total As Double, tLhd_Gene() As Double, _
+                         tLhd_Gene_UB() As Double, tLhd_Total_UB As Double)
+  
+  'Common Block
+  
+  Dim rRPFgeneAver As Double
+  Dim jGene As Long, jAsiteCodon As Long, iPos As Long
+  Dim tModel_kA As Double, t_pAsite As Double
+  
+  Dim cNumber As Long, pNumber As Long, pAsite As Long
+  Dim jStart As Long, jEnd As Long, jGeneStartShift As Long
+  Dim jTot As Long, mRow As Long, indCodon As Long
+  Dim i As Long, j As Long, k As Long, kA As Long
+  
+  
+  'Likelyhood block
+  Dim gene_RPF_ln_tModel As Double, gene_RPF_ln_RPF As Double
+  
+  With newRPFdata
+  jTot = UBound(.geneEnd): 'number of genes in data set
+  mRow = .geneEnd(jTot): 'number of codons in fata set
+  ReDim tModel(mRow), rpfModel(mRow)
+  
+  jGeneStartShift = .jGeneStartShift
+  '
+' Calculate z-Factors from time ML Fingerprints
+  '
+pAsite = .pAsite:
+  pNumber = .pNumber:
+  cNumber = 64: 'Number of codons
+  '
+'Calculate model gene times from v-factors
+  ' calculate Initial  model times from zFactors
+  For jGene = 1 To jTot
+  jStart = .geneStart(jGene) + jGeneStartShift:
+  jEnd = .geneEnd(jGene)
+  For k = jStart To jEnd - pNumber
+  t_pAsite = 1: 'time barrie with a particular codon in the A-site
+  For i = 1 To pNumber
+  indCodon = .iORFcodons(i + k - 1):
+  t_pAsite = t_pAsite * zFP(i, indCodon):
+  Next i
+  kA = pAsite + k - 1: 'A-site in the original data set
+  tModel(kA) = t_pAsite:
+  Next k
+  Next jGene
+  
+  '
+Dim nCodon_Elong As Long
+  Dim geneRPF_Elong As Double
+  Dim t_Gene_Elong As Double, gene_RPF_per_Codon As Double, gene_Time_per_Codon As Double
+  Dim dRPF_kA As Double, nRPF_kA As Long
+  
+  
+  tLhd_Total = 0: 'total likelyhood function
+  tLhd_Total_UB = 0: 'Upper Bound of the total likelyhood function
+  For jGene = 1 To jTot
+  jStart = .geneStart(jGene) + jGeneStartShift:
+  jEnd = .geneEnd(jGene)
+  nCodon_Elong = 0:
+  geneRPF_Elong = 0:
+  t_Gene_Elong = 0:
+  gene_RPF_ln_tModel = 0: 'Likelyhood calculation
+  gene_RPF_ln_RPF = 0: 'Likelyhood Upper Bound Calculation
+  
+  For k = jStart To jEnd - pNumber
+  kA = pAsite + k - 1: 'Count from the A-site
+  nCodon_Elong = nCodon_Elong + 1:
+  nRPF_kA = .nRPF(kA, jSet)
+  
+  dRPF_kA = nRPF_kA
+  geneRPF_Elong = geneRPF_Elong + nRPF_kA:
+  t_Gene_Elong = t_Gene_Elong + tModel(kA):
+  If (tModel(kA) > 0) Then
+  gene_RPF_ln_tModel = gene_RPF_ln_tModel + dRPF_kA * Log(tModel(kA)):
+  Else
+  i = i
+  End If
+  If (nRPF_kA > 0) Then
+  gene_RPF_ln_RPF = gene_RPF_ln_RPF + dRPF_kA * Log(dRPF_kA):
+  Else
+  i = i
+  End If
+  Next k
+  
+  gene_Time_per_Codon = t_Gene_Elong / nCodon_Elong
+  tLhd_Gene(jGene) = gene_RPF_ln_tModel - geneRPF_Elong * Log(gene_Time_per_Codon):
+  tLhd_Total = tLhd_Total + tLhd_Gene(jGene):
+  tLhd_Gene_UB(jGene) = 0
+If (geneRPF_Elong > 0) Then
+  gene_RPF_per_Codon = geneRPF_Elong / nCodon_Elong:
+  tLhd_Gene_UB(jGene) = gene_RPF_ln_RPF - geneRPF_Elong * Log(gene_RPF_per_Codon):
+  End If
+  tLhd_Total_UB = tLhd_Total_UB + tLhd_Gene_UB(jGene):
+  tGeneElong(jGene) = t_Gene_Elong:
+  Next jGene
+  End With
+  End Sub*/
+
+  return output;
+
+}
+  
+
+List RefineStepSize(NumericMatrix zFP, double tLhd_Total, double stepSize, NumericVector zShift_Long){
+  
+  List output;
+  
+//  '
+//'=============================
+  //Sub RefineStepSize(jSet As Long, newRPFdata As RPFdataSet, zFP() As Double, tModel() As Double, _
+  //                     tGeneElong() As Double, tLhd_Total As Double, stepSize As Double, zShift_Long() As Double)
+  
+  
+  //The Sub refines the stepSize by minimizing likelihood along the vDir_Short
+  
+  //Standard block
+
+  
+  int nStepMax = 19;
+  double stepSizeMin = abs(stepSize) / 10;
+  double tLhd_Total_Old = tLhd_Total;
+  double yTol = stepSizeMin * 0.001;
+
+  NumericVector stepSizeSequence(nStepMax); 
+  NumericVector fValueSequence(nStepMax);
+  
+  stepSizeSequence(0) = 0;
+  fValueSequence(0) = tLhd_Total;
+  
+  //do the shift to Get new z-factor and estimate the convergence
+  
+
+  
+  int pNumber = 15;
+  int cNumber = 64; //Number of codons
+  
+  NumericMatrix zFP_New(pNumber, cNumber);
+  NumericMatrix zShift(pNumber, cNumber);
+  
+  //Get zShift
+  int k = 0;
+  for(int iPos = 0; iPos < pNumber; iPos++){
+    for(int indCodon = 0; indCodon < cNumber; indCodon++){
+      k++;
+      zShift(iPos, indCodon) = zShift_Long(k);
+    }
+  }
+  
+  //Do stepping
+  double stepSizeAdd = stepSizeMin;
+  int iStepLast;
+  bool iFlag_Zero, iFlag;
+  
+  stepSize = 0;
+  for(int iStepSize = 1; iStepSize < nStepMax; iStepSize++){
+    iStepLast = iStepSize;
+    //safeguard from negatives in the new zFP
+    stepSize = stepSize + stepSizeAdd;
+    iFlag_Zero = 0;
+  for(int iA34 = 0; iA34 < 5; iA34++){
+    iFlag = 0;
+    for(int iPos = 0; iPos < pNumber; iPos++){
+      for(int indCodon = 0; indCodon < cNumber; indCodon++){
+      if((zFP(iPos, indCodon) + stepSize * zShift(iPos, indCodon)) < 0){
+          iFlag = 1;
+          iFlag_Zero = 1;
+          break;
+        }
+      }
+      
+      /*
+    If (iFlag = 1) Then Exit For
+    
+    
+    If (iFlag = 1) Then 'reduce the step size
+    stepSize = stepSize / 2:
+    End If
+    If (iFlag_Zero = 1 And iFlag = 0) Then
+    stepSize = stepSize
+    Exit Sub
+    End If
+    Next iA34
+    
+    //do a tryal shift
+      
+      For iPos = 1 To pNumber
+      For indCodon = 1 To cNumber
+      zFP_New(iPos, indCodon) = zFP(iPos, indCodon) + stepSize * zShift(iPos, indCodon):
+      Next indCodon
+      Next iPos
+      k = k
+      
+      ' Get new  value of the L-function
+      Call Get_Log_Likelihood_Only(jSet, newRPFdata, zFP_New, tModel, tGeneElong, tLhd_Total)
+      iFlag = 0
+    If (tLhd_Total > tLhd_Total_Old) Then 'The step is legitimate; Record
+      stepSizeSequence(iStepSize) = stepSize
+      fValueSequence(iStepSize) = tLhd_Total
+      tLhd_Total_Old = tLhd_Total:
+      Else
+      stepSizeSequence(iStepSize + 1) = stepSize
+      fValueSequence(iStepSize + 1) = tLhd_Total
+      stepSize = stepSize - stepSizeAdd / 2:
+      'try an intermediate step
+        For iPos = 1 To pNumber
+        For indCodon = 1 To cNumber
+        zFP_New(iPos, indCodon) = zFP(iPos, indCodon) + stepSize * zShift(iPos, indCodon):
+        Next indCodon
+        Next iPos
+        Call Get_Log_Likelihood_Only(jSet, newRPFdata, zFP_New, tModel, tGeneElong, tLhd_Total)
+        stepSizeSequence(iStepSize) = stepSize
+        fValueSequence(iStepSize) = tLhd_Total
+        
+        tLhd_Total = tLhd_Total:
+        If (fValueSequence(iStepSize) > fValueSequence(iStepSize - 1)) Then
+        stepSize = stepSizeSequence(iStepSize)
+        tLhd_Total = fValueSequence(iStepSize)
+        'Use 3-point bracket, v2 is max
+        y1 = stepSizeSequence(iStepSize - 1)
+        y2 = stepSizeSequence(iStepSize)
+        y3 = stepSizeSequence(iStepSize + 1)
+        v1 = fValueSequence(iStepSize - 1)
+        v2 = fValueSequence(iStepSize)
+        v3 = fValueSequence(iStepSize + 1)
+        Else
+        stepSize = stepSizeSequence(iStepSize - 1)
+        tLhd_Total = fValueSequence(iStepSize - 1)
+        'Use 3-point bracket, v2 is max
+        y1 = stepSizeSequence(iStepSize - 2)
+        y2 = stepSizeSequence(iStepSize - 1)
+        y3 = stepSizeSequence(iStepSize)
+        v1 = fValueSequence(iStepSize - 2)
+        v2 = fValueSequence(iStepSize - 1)
+        v3 = fValueSequence(iStepSize)
+        
+        End If
+        iFlag = 1
+      Exit For
+        End If
+        
+        stepSizeAdd = 2 * stepSizeAdd
+  }
+        If (iFlag = 0) Then stepSize = stepSizeSequence(iStepSize)
+        If (iStepLast < 3) Then
+        stepSize = 0
+      Exit Sub
+        End If
+        
+        ' Refine using quadratic interpolation
+        For iDummy = 1 To 6
+      d32 = (v3 - v2) / (y3 - y2):
+        d21 = (v2 - v1) / (y2 - y1):
+        d31 = (v3 - v1) / (y3 - y1):
+        aCoff = (d32 - d21) / (y3 - y1)
+        bCoff = d31 - aCoff * (y3 + y1)
+        yI = -bCoff / (2 * aCoff)
+        
+        'Get Log-Likelihood (=vI) with yI step size
+        For iPos = 1 To pNumber
+        For indCodon = 1 To cNumber
+        zFP_New(iPos, indCodon) = zFP(iPos, indCodon) + yI * zShift(iPos, indCodon):
+        Next indCodon
+        Next iPos
+        Call Get_Log_Likelihood_Only(jSet, newRPFdata, zFP_New, tModel, tGeneElong, vI)
+        
+        'Four major cases
+        iFlag = 0
+      
+      If (yI < y2 And vI < v2) Then y1 = yI: v1 = vI: iFlag = 1: 'replace (1) with (I)
+        
+        If (yI < y2 And vI > v2) Then 'replace (3) with (2) and (2) with (I); (1) the same
+          y3 = y2: v3 = v2: y2 = yI: v2 = vI: iFlag = 1:
+          End If
+          
+          If (yI > y2 And vI > v2) Then 'replace (1) with (2) and (2) with (I); (3) the same
+            y1 = y2: v1 = v2: y2 = yI: v2 = vI: iFlag = 1:
+            End If
+            
+            If (yI > y2 And vI < v2) Then y3 = yI: v3 = vI: iFlag = 1: 'replace (1) with (I)
+            
+            If (iFlag = 0) Then Exit For
+            y31_Length = y3 - y1:
+            y32_Length = y3 - y2:
+            y21_Length = y2 - y1:
+            v31_Diff = v3 - v1:
+            v23_Diff = v2 - v3:
+            v21_Diff = v2 - v1:
+            If (y31_Length < yTol Or y32_Length < yTol Or y21_Length < yTol) Then 'we are at the bracket boundary
+            i = i
+            Exit For
+            End If
+            Next iDummy
+            stepSize = y2
+            tLhd_Total = v2
+            v2 = v2
+            End Sub*/
+
+  return output;
+
+}
+            
+List InvertLUPA(){
+  
+  List output;
+                        
+/*            '===========================================================================
+              '
+          Public Sub InvertLUPA(mL() As Double, mU() As Double, vP() As Double, mAM1() As Double)
+            '
+          'Invert matrix A that has been LUP factorised by solving n-equations
+            'Given equation A*AM1(k)=e(k) where AM1(k) is a k-column of A inverse
+            'Solve the equation L*U*AM1(k)=PM1*e(k)
+            'first  solve Lv=PM1*e(k) by forward substitutions
+            '
+          '
+          Dim i As Long, j As Long, k As Long, jP As Long, kP As Long
+            Dim iDim As Long, jDim As Long
+            Dim z() As Double, v() As Double, W() As Double, e() As Double
+            Dim vj As Double, zj As Double, mUjj As Double
+            Dim zTol As Double
+            zTol = 1E-09
+          '
+          iDim = UBound(mL, 1)
+            jDim = UBound(mL, 2)
+            ReDim v(jDim)
+            ReDim z(jDim)
+            ReDim W(jDim)
+            ReDim mAM1(jDim, jDim)
+            
+            '
+          ' prepare intermediate vectors
+            '
+          For k = 1 To jDim
+            For j = 1 To jDim:
+            v(j) = 0:
+            mAM1(j, k) = 0:
+            z(j) = 0:
+            W(j) = 0:
+            jP = vP(j): 'permutate e(k) components
+            If (jP = k) Then kP = k
+            Next j
+            W(kP) = 1:
+            ' Solve L*v=W for v by forward substitutions
+              For j = kP To jDim:
+              vj = 0:
+              If (Abs(W(j)) > 0) Then vj = W(j) / mL(j, j):
+              v(j) = vj:
+              If (Abs(vj) > 0) Then
+              For i = j To jDim:
+              W(i) = W(i) - vj * mL(i, j):
+              Next i
+              End If
+              Next j
+              'then solve mU*z=v by backsubstitutions
+              For j = jDim To 1 Step -1
+            mUjj = mU(j, j):
+              zj = 8:
+              If (Abs(mUjj) > zTol) Then zj = v(j) / mUjj:
+              z(j) = zj:
+              mAM1(j, k) = zj:
+              For i = 1 To j:
+              v(i) = v(i) - zj * mU(i, j):
+              Next i
+              Next j
+              Next k
+              End Sub */
+
+  return output;
+
+}
+              
+List Get_Log_Likelihood_Only(){
+  
+  List output;
+                            
+              /*Sub Get_Log_Likelihood_Only(jSet As Long, newRPFdata As RPFdataSet, zFP() As Double, tModel() As Double, _
+                                            tGeneElong() As Double, tLhd_Total As Double)
+              
+              'Common Block
+              
+              Dim rRPFgeneAver As Double
+              Dim jGene As Long, jAsiteCodon As Long, iPos As Long
+              Dim tModel_kA As Double, t_pAsite As Double
+              
+              Dim cNumber As Long, pNumber As Long, pAsite As Long
+              Dim jStart As Long, jEnd As Long, jGeneStartShift As Long
+              Dim jTot As Long, mRow As Long, indCodon As Long
+              Dim i As Long, j As Long, k As Long, kA As Long
+              
+              
+              'Likelyhood block
+              Dim gene_RPF_ln_tModel As Double, gene_RPF_ln_RPF As Double
+              
+              Dim nCodon_Elong As Long
+              Dim geneRPF_Elong As Double
+              Dim t_Gene_Elong As Double, gene_RPF_per_Codon As Double, gene_Time_per_Codon As Double
+              Dim dRPF_kA As Double, nRPF_kA As Long
+              
+              With newRPFdata
+              jTot = UBound(.geneEnd): 'number of genes in data set
+              mRow = .geneEnd(jTot): 'number of codons in fata set
+              ReDim tModel(mRow), rpfModel(mRow)
+              
+              jGeneStartShift = .jGeneStartShift
+              '
+            ' Calculate z-Factors from time ML Fingerprints
+              '
+            pAsite = .pAsite:
+              pNumber = .pNumber:
+              cNumber = 64: 'Number of codons
+              '
+            'Calculate model gene times from v-factors
+              ' calculate Initial  model times from zFactors
+              For jGene = 1 To jTot
+              jStart = .geneStart(jGene) + jGeneStartShift:
+              jEnd = .geneEnd(jGene)
+              For k = jStart To jEnd - pNumber
+              t_pAsite = 1: 'time barrie with a particular codon in the A-site
+              For i = 1 To pNumber
+              indCodon = .iORFcodons(i + k - 1):
+              t_pAsite = t_pAsite * zFP(i, indCodon):
+              Next i
+              kA = pAsite + k - 1: 'A-site in the original data set
+              tModel(kA) = t_pAsite:
+              Next k
+              Next jGene
+              '
+            tLhd_Total = 0: 'total likelyhood function
+              For jGene = 1 To jTot
+              jStart = .geneStart(jGene) + jGeneStartShift:
+              jEnd = .geneEnd(jGene)
+              nCodon_Elong = 0:
+              geneRPF_Elong = 0:
+              t_Gene_Elong = 0:
+              gene_RPF_ln_tModel = 0: 'Likelyhood calculation
+              gene_RPF_ln_RPF = 0: 'Likelyhood Upper Bound Calculation
+              
+              For k = jStart To jEnd - pNumber
+              kA = pAsite + k - 1: 'Count from the A-site
+              nCodon_Elong = nCodon_Elong + 1:
+              nRPF_kA = .nRPF(kA, jSet)
+              
+              dRPF_kA = nRPF_kA
+              geneRPF_Elong = geneRPF_Elong + nRPF_kA:
+              t_Gene_Elong = t_Gene_Elong + tModel(kA):
+              If (tModel(kA) > 0) Then
+              gene_RPF_ln_tModel = gene_RPF_ln_tModel + dRPF_kA * Log(tModel(kA)):
+              Else
+              i = i
+              End If
+              If (nRPF_kA > 0) Then
+              gene_RPF_ln_RPF = gene_RPF_ln_RPF + dRPF_kA * Log(dRPF_kA):
+              Else
+              i = i
+              End If
+              Next k
+              
+              gene_Time_per_Codon = t_Gene_Elong / nCodon_Elong
+              tLhd_Total = tLhd_Total + gene_RPF_ln_tModel - geneRPF_Elong * Log(gene_Time_per_Codon):
+              tGeneElong(jGene) = t_Gene_Elong:
+              Next jGene
+              End With
+              End Sub*/
+              
+  return output;
 }

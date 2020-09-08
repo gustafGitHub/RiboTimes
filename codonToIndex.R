@@ -1046,6 +1046,19 @@ codon2AminoAcid<-function(codonIndex){
   
 }
 
+codon2AminoAcidNumber<-function(codonIndex){
+  
+  aa<-getAminoAcids()
+  cc<-AminoAcid2codon()
+  ccu<-unlist(lapply(cc, function(x) x == codonIndex))
+  aai <- AminoAcid2codonIndex()
+  
+  aaNumber = aai[ccu]
+  
+  return(aaNumber)
+  
+}
+
 AminoAcid2codonIndex<-function(){
   
   cc<-AminoAcid2codon()
@@ -1187,5 +1200,21 @@ codon2Hydro <- function(codonIndex){
   charge = h[ccu]
   
   return(charge)
+  
+}
+
+
+tRNA_abundance4 <- function(ConcentrationIndex){
+  
+  tRNAconc <- tRNAconcentrationPerAA()
+  tRNAa = numeric()
+  for(i in 1:64){
+    
+    tRNAa[i] = sum(tRNAconc[codon2AminoAcidNumber(i),ConcentrationIndex])
+      
+  }
+  
+  return(tRNAa)
+  
   
 }
