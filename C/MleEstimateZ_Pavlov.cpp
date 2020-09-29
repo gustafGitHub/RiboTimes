@@ -504,7 +504,7 @@ List Hes_Pos_ML_Refine_zFactors(List MleObject) {
     vDir_Norm = sqrt(vDir_Norm2);
     vDir_LogLkh_Derivative = vDirGradProjection / vDir_Norm;
     stepSize = 0.05 * tLhd_Total / vDirGradProjection; //Try to increase LL by 5%
-      stepSize = stepSize;
+      //stepSize = stepSize;
       
       //Restore vDir and zShift_Long
       iA = 0;
@@ -676,7 +676,7 @@ List Hes_Pos_ML_Refine_zFactors(List MleObject) {
       if(i > 0){
       iA = iA + 1;
       diagHM1_Full(iPos, indCodon) = diagHM1_Full(iPos, indCodon) + mHM1(iA, iA);
-      iA = iA;
+      //iA = iA;
       }
       }
       }
@@ -1032,7 +1032,7 @@ If (geneRPF_Elong > 0) Then
 
 }
   
-
+// [[Rcpp::export]]
 List RefineStepSize(NumericMatrix zFP, double tLhd_Total, double stepSize, NumericVector zShift_Long){
   
   List output;
@@ -1050,8 +1050,8 @@ List RefineStepSize(NumericMatrix zFP, double tLhd_Total, double stepSize, Numer
   
   int nStepMax = 19;
   double stepSizeMin = abs(stepSize) / 10;
-  double tLhd_Total_Old = tLhd_Total;
-  double yTol = stepSizeMin * 0.001;
+  //double tLhd_Total_Old = tLhd_Total;
+  //double yTol = stepSizeMin * 0.001;
 
   NumericVector stepSizeSequence(nStepMax); 
   NumericVector fValueSequence(nStepMax);
@@ -1065,6 +1065,8 @@ List RefineStepSize(NumericMatrix zFP, double tLhd_Total, double stepSize, Numer
   
   int pNumber = 15;
   int cNumber = 64; //Number of codons
+  double y1, y2,y3,v1,v2,v3;
+  double d32, d21, d31, aCoff, bCoff, yI;
   
   NumericMatrix zFP_New(pNumber, cNumber);
   NumericMatrix zShift(pNumber, cNumber);
@@ -1100,105 +1102,108 @@ List RefineStepSize(NumericMatrix zFP, double tLhd_Total, double stepSize, Numer
         }
       }
       
-      /*
-    If (iFlag = 1) Then Exit For
+      if(iFlag == 1){break;}
+    }
     
     
-    If (iFlag = 1) Then 'reduce the step size
-    stepSize = stepSize / 2:
-    End If
-    If (iFlag_Zero = 1 And iFlag = 0) Then
-    stepSize = stepSize
-    Exit Sub
-    End If
-    Next iA34
+    if(iFlag == 1){ //reduce the step size
+      stepSize = stepSize / 2;
+    }
+    if(iFlag_Zero == 1 && iFlag == 0){
+    //stepSize = stepSize
+      return output;
+    }
+    }
     
     //do a tryal shift
       
-      For iPos = 1 To pNumber
-      For indCodon = 1 To cNumber
-      zFP_New(iPos, indCodon) = zFP(iPos, indCodon) + stepSize * zShift(iPos, indCodon):
-      Next indCodon
-      Next iPos
-      k = k
+      for(int iPos = 0; iPos < pNumber; iPos++){
+        for(int indCodon = 0; indCodon < cNumber; indCodon++){
+          zFP_New(iPos, indCodon) = zFP(iPos, indCodon) + stepSize * zShift(iPos, indCodon);
+        }
+      }
+      //k = k
       
-      ' Get new  value of the L-function
-      Call Get_Log_Likelihood_Only(jSet, newRPFdata, zFP_New, tModel, tGeneElong, tLhd_Total)
-      iFlag = 0
-    If (tLhd_Total > tLhd_Total_Old) Then 'The step is legitimate; Record
-      stepSizeSequence(iStepSize) = stepSize
-      fValueSequence(iStepSize) = tLhd_Total
-      tLhd_Total_Old = tLhd_Total:
-      Else
-      stepSizeSequence(iStepSize + 1) = stepSize
-      fValueSequence(iStepSize + 1) = tLhd_Total
-      stepSize = stepSize - stepSizeAdd / 2:
-      'try an intermediate step
-        For iPos = 1 To pNumber
-        For indCodon = 1 To cNumber
-        zFP_New(iPos, indCodon) = zFP(iPos, indCodon) + stepSize * zShift(iPos, indCodon):
-        Next indCodon
-        Next iPos
-        Call Get_Log_Likelihood_Only(jSet, newRPFdata, zFP_New, tModel, tGeneElong, tLhd_Total)
-        stepSizeSequence(iStepSize) = stepSize
-        fValueSequence(iStepSize) = tLhd_Total
+      // Get new  value of the L-function
+      // Call Get_Log_Likelihood_Only(jSet, newRPFdata, zFP_New, tModel, tGeneElong, tLhd_Total)
+      double tLhd_Total_Old;
+      iFlag = 0;
+      if(tLhd_Total > tLhd_Total_Old){ //The step is legitimate; Record
+        stepSizeSequence(iStepSize) = stepSize;
+        fValueSequence(iStepSize) = tLhd_Total;
+        tLhd_Total_Old = tLhd_Total;
+      }
+      else{
+      stepSizeSequence(iStepSize + 1) = stepSize;
+      fValueSequence(iStepSize + 1) = tLhd_Total;
+      stepSize = stepSize - stepSizeAdd / 2;
+      //try an intermediate step
+        for(int iPos = 0; iPos < pNumber; iPos++){
+          for(int indCodon = 0; indCodon  < cNumber; indCodon++){
+            zFP_New(iPos, indCodon) = zFP(iPos, indCodon) + stepSize * zShift(iPos, indCodon);
+          }
+        }
+        //Call Get_Log_Likelihood_Only(jSet, newRPFdata, zFP_New, tModel, tGeneElong, tLhd_Total)
+        stepSizeSequence(iStepSize) = stepSize;
+        fValueSequence(iStepSize) = tLhd_Total;
         
-        tLhd_Total = tLhd_Total:
-        If (fValueSequence(iStepSize) > fValueSequence(iStepSize - 1)) Then
-        stepSize = stepSizeSequence(iStepSize)
-        tLhd_Total = fValueSequence(iStepSize)
-        'Use 3-point bracket, v2 is max
-        y1 = stepSizeSequence(iStepSize - 1)
-        y2 = stepSizeSequence(iStepSize)
-        y3 = stepSizeSequence(iStepSize + 1)
-        v1 = fValueSequence(iStepSize - 1)
-        v2 = fValueSequence(iStepSize)
-        v3 = fValueSequence(iStepSize + 1)
-        Else
-        stepSize = stepSizeSequence(iStepSize - 1)
-        tLhd_Total = fValueSequence(iStepSize - 1)
-        'Use 3-point bracket, v2 is max
-        y1 = stepSizeSequence(iStepSize - 2)
-        y2 = stepSizeSequence(iStepSize - 1)
-        y3 = stepSizeSequence(iStepSize)
-        v1 = fValueSequence(iStepSize - 2)
-        v2 = fValueSequence(iStepSize - 1)
-        v3 = fValueSequence(iStepSize)
+        tLhd_Total = tLhd_Total;
+        if(fValueSequence(iStepSize) > fValueSequence(iStepSize - 1)){
+        stepSize = stepSizeSequence(iStepSize);
+        tLhd_Total = fValueSequence(iStepSize);
+        //Use 3-point bracket, v2 is max
+        y1 = stepSizeSequence(iStepSize - 1);
+        y2 = stepSizeSequence(iStepSize);
+        y3 = stepSizeSequence(iStepSize + 1);
+        v1 = fValueSequence(iStepSize - 1);
+        v2 = fValueSequence(iStepSize);
+        v3 = fValueSequence(iStepSize + 1);
+        }
+        else{
+        stepSize = stepSizeSequence(iStepSize - 1);
+        tLhd_Total = fValueSequence(iStepSize - 1);
+        //Use 3-point bracket, v2 is max
+        y1 = stepSizeSequence(iStepSize - 2);
+        y2 = stepSizeSequence(iStepSize - 1);
+        y3 = stepSizeSequence(iStepSize);
+        v1 = fValueSequence(iStepSize - 2);
+        v2 = fValueSequence(iStepSize - 1);
+        v3 = fValueSequence(iStepSize);
         
-        End If
-        iFlag = 1
-      Exit For
-        End If
+        }
+        iFlag = 1;
+      break;
+    }
         
-        stepSizeAdd = 2 * stepSizeAdd
+        stepSizeAdd = 2 * stepSizeAdd;
   }
-        If (iFlag = 0) Then stepSize = stepSizeSequence(iStepSize)
-        If (iStepLast < 3) Then
-        stepSize = 0
-      Exit Sub
-        End If
+        if(iFlag == 0){stepSize = stepSizeSequence(iStepLast);}
+        if(iStepLast < 3){
+          stepSize = 0;
+          return output;
+        }
         
-        ' Refine using quadratic interpolation
-        For iDummy = 1 To 6
-      d32 = (v3 - v2) / (y3 - y2):
-        d21 = (v2 - v1) / (y2 - y1):
-        d31 = (v3 - v1) / (y3 - y1):
-        aCoff = (d32 - d21) / (y3 - y1)
-        bCoff = d31 - aCoff * (y3 + y1)
-        yI = -bCoff / (2 * aCoff)
+        // Refine using quadratic interpolation
+        for(int iDummy = 0; iDummy < 6; iDummy++){
+          d32 = (v3 - v2) / (y3 - y2);
+          d21 = (v2 - v1) / (y2 - y1);
+          d31 = (v3 - v1) / (y3 - y1);
+          aCoff = (d32 - d21) / (y3 - y1);
+          bCoff = d31 - aCoff * (y3 + y1);
+          yI = -bCoff / (2 * aCoff);
         
-        'Get Log-Likelihood (=vI) with yI step size
-        For iPos = 1 To pNumber
-        For indCodon = 1 To cNumber
-        zFP_New(iPos, indCodon) = zFP(iPos, indCodon) + yI * zShift(iPos, indCodon):
-        Next indCodon
-        Next iPos
-        Call Get_Log_Likelihood_Only(jSet, newRPFdata, zFP_New, tModel, tGeneElong, vI)
+        //Get Log-Likelihood (=vI) with yI step size
+        for(int iPos = 0; iPos < pNumber; iPos++){
+          for(int indCodon = 0; indCodon < cNumber; indCodon++){
+            zFP_New(iPos, indCodon) = zFP(iPos, indCodon) + yI * zShift(iPos, indCodon);
+          }
+        }
+        //Call Get_Log_Likelihood_Only(jSet, newRPFdata, zFP_New, tModel, tGeneElong, vI)
         
-        'Four major cases
-        iFlag = 0
+        //Four major cases
+        iFlag = 0;
       
-      If (yI < y2 And vI < v2) Then y1 = yI: v1 = vI: iFlag = 1: 'replace (1) with (I)
+      If (yI < y2 And vI < v2) Then y1 = yI: v1 = vI: iFlag = 1: //replace (1) with (I)
         
         If (yI < y2 And vI > v2) Then 'replace (3) with (2) and (2) with (I); (1) the same
           y3 = y2: v3 = v2: y2 = yI: v2 = vI: iFlag = 1:
@@ -1221,16 +1226,22 @@ List RefineStepSize(NumericMatrix zFP, double tLhd_Total, double stepSize, Numer
             i = i
             Exit For
             End If
-            Next iDummy
+        }
             stepSize = y2
             tLhd_Total = v2
             v2 = v2
-            End Sub*/
-
+            return output;
+      
+      }
+    }
+  }
+    
   return output;
+    
 
 }
-            
+
+// [[Rcpp::export]]            
 List InvertLUPA(){
   
   List output;
@@ -1300,7 +1311,8 @@ List InvertLUPA(){
   return output;
 
 }
-              
+
+// [[Rcpp::export]]              
 List Get_Log_Likelihood_Only(){
   
   List output;

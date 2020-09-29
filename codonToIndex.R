@@ -1,4 +1,5 @@
 # codonToIndex
+
 codonToIndex <- function(gene){
 
 codonIndex = integer(0)   
@@ -607,7 +608,6 @@ tRNA_abundance2 <- function(){
   
 }
 
-
 tRNA_abundance3 <- function(){
   
   codons = c (
@@ -907,7 +907,6 @@ getAminoAcids<-function(){
   
 }
 
-
 getAminoAcids2<-function(){
   
   amino<-c(
@@ -1031,7 +1030,6 @@ AminoAcid2codon<-function(){
   return(codonList)
   
 }
-
 
 codon2AminoAcid<-function(codonIndex){
   
@@ -1203,7 +1201,6 @@ codon2Hydro <- function(codonIndex){
   
 }
 
-
 tRNA_abundance4 <- function(ConcentrationIndex){
   
   tRNAconc <- tRNAconcentrationPerAA()
@@ -1216,5 +1213,14 @@ tRNA_abundance4 <- function(ConcentrationIndex){
   
   return(tRNAa)
   
+  
+}
+
+get_is_stop <- function(){
+  
+  is_stop = rep(0, 64)
+  is_stop[c(49, 51, 57)] = 1
+  
+  return(is_stop)
   
 }
