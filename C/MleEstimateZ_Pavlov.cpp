@@ -1066,6 +1066,7 @@ List RefineStepSize(NumericMatrix zFP, double tLhd_Total, double stepSize, Numer
   int pNumber = 15;
   int cNumber = 64; //Number of codons
   double y1, y2,y3,v1,v2,v3;
+
   double d32, d21, d31, aCoff, bCoff, yI;
   
   NumericMatrix zFP_New(pNumber, cNumber);
