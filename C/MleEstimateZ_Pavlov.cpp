@@ -1050,8 +1050,8 @@ List RefineStepSize(NumericMatrix zFP, double tLhd_Total, double stepSize, Numer
   
   int nStepMax = 19;
   double stepSizeMin = abs(stepSize) / 10;
-  //double tLhd_Total_Old = tLhd_Total;
-  //double yTol = stepSizeMin * 0.001;
+  double tLhd_Total_Old = tLhd_Total;
+  double yTol = stepSizeMin * 0.001;
 
   NumericVector stepSizeSequence(nStepMax); 
   NumericVector fValueSequence(nStepMax);
@@ -1068,6 +1068,9 @@ List RefineStepSize(NumericMatrix zFP, double tLhd_Total, double stepSize, Numer
   double y1, y2,y3,v1,v2,v3;
 
   double d32, d21, d31, aCoff, bCoff, yI;
+  double vI;
+  double y31_Length, y32_Length, y21_Length;
+  double v31_Diff, v23_Diff, v21_Diff;
   
   NumericMatrix zFP_New(pNumber, cNumber);
   NumericMatrix zShift(pNumber, cNumber);
@@ -1178,93 +1181,89 @@ List RefineStepSize(NumericMatrix zFP, double tLhd_Total, double stepSize, Numer
         
         stepSizeAdd = 2 * stepSizeAdd;
   }
-        if(iFlag == 0){stepSize = stepSizeSequence(iStepLast);}
-        if(iStepLast < 3){
-          stepSize = 0;
-          return output;
-        }
-        
-        // Refine using quadratic interpolation
-        for(int iDummy = 0; iDummy < 6; iDummy++){
-          d32 = (v3 - v2) / (y3 - y2);
-          d21 = (v2 - v1) / (y2 - y1);
-          d31 = (v3 - v1) / (y3 - y1);
-          aCoff = (d32 - d21) / (y3 - y1);
-          bCoff = d31 - aCoff * (y3 + y1);
-          yI = -bCoff / (2 * aCoff);
-        
-        //Get Log-Likelihood (=vI) with yI step size
-        for(int iPos = 0; iPos < pNumber; iPos++){
-          for(int indCodon = 0; indCodon < cNumber; indCodon++){
-            zFP_New(iPos, indCodon) = zFP(iPos, indCodon) + yI * zShift(iPos, indCodon);
-          }
-        }
-        //Call Get_Log_Likelihood_Only(jSet, newRPFdata, zFP_New, tModel, tGeneElong, vI)
-        
-        //Four major cases
-        iFlag = 0;
-      
-      If (yI < y2 And vI < v2) Then y1 = yI: v1 = vI: iFlag = 1: //replace (1) with (I)
-        
-        If (yI < y2 And vI > v2) Then 'replace (3) with (2) and (2) with (I); (1) the same
-          y3 = y2: v3 = v2: y2 = yI: v2 = vI: iFlag = 1:
-          End If
-          
-          If (yI > y2 And vI > v2) Then 'replace (1) with (2) and (2) with (I); (3) the same
-            y1 = y2: v1 = v2: y2 = yI: v2 = vI: iFlag = 1:
-            End If
-            
-            If (yI > y2 And vI < v2) Then y3 = yI: v3 = vI: iFlag = 1: 'replace (1) with (I)
-            
-            If (iFlag = 0) Then Exit For
-            y31_Length = y3 - y1:
-            y32_Length = y3 - y2:
-            y21_Length = y2 - y1:
-            v31_Diff = v3 - v1:
-            v23_Diff = v2 - v3:
-            v21_Diff = v2 - v1:
-            If (y31_Length < yTol Or y32_Length < yTol Or y21_Length < yTol) Then 'we are at the bracket boundary
-            i = i
-            Exit For
-            End If
-        }
-            stepSize = y2
-            tLhd_Total = v2
-            v2 = v2
-            return output;
-      
-      }
+  if(iFlag == 0){stepSize = stepSizeSequence(iStepLast);}
+  if(iStepLast < 3){
+    stepSize = 0;
+    return output;
+  }
+  
+  // Refine using quadratic interpolation
+  for(int iDummy = 0; iDummy < 6; iDummy++){
+    d32 = (v3 - v2) / (y3 - y2);
+    d21 = (v2 - v1) / (y2 - y1);
+    d31 = (v3 - v1) / (y3 - y1);
+    aCoff = (d32 - d21) / (y3 - y1);
+    bCoff = d31 - aCoff * (y3 + y1);
+    yI = -bCoff / (2 * aCoff);
+  
+  //Get Log-Likelihood (=vI) with yI step size
+  for(int iPos = 0; iPos < pNumber; iPos++){
+    for(int indCodon = 0; indCodon < cNumber; indCodon++){
+      zFP_New(iPos, indCodon) = zFP(iPos, indCodon) + yI * zShift(iPos, indCodon);
     }
   }
-    
-  return output;
-    
+  //Call Get_Log_Likelihood_Only(jSet, newRPFdata, zFP_New, tModel, tGeneElong, vI)
+  
+  //Four major cases
+  iFlag = 0;
 
+  if(yI < y2 && vI < v2){
+    y1 = yI; v1 = vI; iFlag = 1;
+  } //replace (1) with (I)
+    
+  if(yI < y2 && vI > v2){  
+    y3 = y2; v3 = v2; y2 = yI; v2 = vI; iFlag = 1;
+  } //replace (3) with (2) and (2) with (I); (1) the same
+      
+  if (yI > y2 && vI > v2){ //replace (1) with (2) and (2) with (I); (3) the same
+    y1 = y2; v1 = v2; y2 = yI; v2 = vI; iFlag = 1;
+  }
+        
+  if(yI > y2 && vI < v2){ y3 = yI; v3 = vI; iFlag = 1;}//replace (1) with (I)
+        
+        if (iFlag == 0){break;}
+        y31_Length = y3 - y1;
+        y32_Length = y3 - y2;
+        y21_Length = y2 - y1;
+        v31_Diff = v3 - v1;
+        v23_Diff = v2 - v3;
+        v21_Diff = v2 - v1;
+        if(y31_Length < yTol || y32_Length < yTol || y21_Length < yTol) { //we are at the bracket boundary
+        //i = i
+        break;
+        }
+    }
+    stepSize = y2;
+    tLhd_Total = v2;
+    //v2 = v2
+    return output;
+  
 }
+
 
 // [[Rcpp::export]]            
 List InvertLUPA(){
   
   List output;
                         
-/*            '===========================================================================
-              '
-          Public Sub InvertLUPA(mL() As Double, mU() As Double, vP() As Double, mAM1() As Double)
-            '
-          'Invert matrix A that has been LUP factorised by solving n-equations
-            'Given equation A*AM1(k)=e(k) where AM1(k) is a k-column of A inverse
-            'Solve the equation L*U*AM1(k)=PM1*e(k)
-            'first  solve Lv=PM1*e(k) by forward substitutions
-            '
-          '
-          Dim i As Long, j As Long, k As Long, jP As Long, kP As Long
-            Dim iDim As Long, jDim As Long
-            Dim z() As Double, v() As Double, W() As Double, e() As Double
-            Dim vj As Double, zj As Double, mUjj As Double
-            Dim zTol As Double
-            zTol = 1E-09
-          '
-          iDim = UBound(mL, 1)
+  //===========================================================================
+  //
+  //Public Sub InvertLUPA(mL() As Double, mU() As Double, vP() As Double, mAM1() As Double)
+  //
+  //Invert matrix A that has been LUP factorised by solving n-equations
+  //Given equation A*AM1(k)=e(k) where AM1(k) is a k-column of A inverse
+  //Solve the equation L*U*AM1(k)=PM1*e(k)
+  //first  solve Lv=PM1*e(k) by forward substitutions
+  //
+  //
+  /*Dim i As Long, j As Long, k As Long, jP As Long, kP As Long
+  Dim iDim As Long, jDim As Long
+  Dim z() As Double, v() As Double, W() As Double, e() As Double
+  Dim vj As Double, zj As Double, mUjj As Double
+  Dim zTol As Double*/
+  double zTol = 1E-09;
+          
+  /* iDim = UBound(mL, 1)
             jDim = UBound(mL, 2)
             ReDim v(jDim)
             ReDim z(jDim)
