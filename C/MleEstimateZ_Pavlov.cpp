@@ -958,16 +958,19 @@ List Get_Log_Likelihood(int jTot){
   int pAsite = 15;
   //pNumber = .pNumber:
   int cNumber = 64; //Number of codons
+  int pNumber = 15;
+  int jEnd = 1;
   double t_pAsite;
-  int kA, indCodon;
+  int kA, indCodon, tLhd_Total, tLhd_Total_UB;
   NumericVector tModel;
+  NumericMatrix zFP;
 
   //Calculate model gene times from v-factors
   // calculate Initial  model times from zFactors
   for(int jGene = 0; jGene < jTot; jGene++){
     //jStart = .geneStart(jGene) + jGeneStartShift:
     //jEnd = .geneEnd(jGene)
-    for(int k = 0; k < jEnd){
+    for(int k = 0; k < jEnd; k++){
       t_pAsite = 1; //time barrie with a particular codon in the A-site
       for(int i = 0; i < pNumber; i++){
         indCodon = //.iORFcodons(i + k - 1)
@@ -984,9 +987,9 @@ List Get_Log_Likelihood(int jTot){
   Dim dRPF_kA As Double, nRPF_kA As Long*/
   
   
-  tLhd_Total = 0: //total likelyhood function
-  tLhd_Total_UB = 0: //Upper Bound of the total likelyhood function
-  For jGene = 1 To jTot
+  tLhd_Total = 0; //total likelyhood function
+  tLhd_Total_UB = 0; //Upper Bound of the total likelyhood function
+  /* For jGene = 1 To jTot
   jStart = .geneStart(jGene) + jGeneStartShift:
   jEnd = .geneEnd(jGene)
   nCodon_Elong = 0:
