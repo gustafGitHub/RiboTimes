@@ -924,67 +924,68 @@ List FactorLUPA(int iP, NumericMatrix mA){
   
 }
 
-List Get_Log_Likelihood(){
+List Get_Log_Likelihood(int jTot){
 
   List output;
   
 /*Sub Get_Log_Likelihood(jSet As Long, newRPFdata As RPFdataSet, zFP() As Double, tModel() As Double, _
                          tGeneElong() As Double, tLhd_Total As Double, tLhd_Gene() As Double, _
-                         tLhd_Gene_UB() As Double, tLhd_Total_UB As Double)
+                         tLhd_Gene_UB() As Double, tLhd_Total_UB As Double) */
   
-  'Common Block
+  //Common Block
   
-  Dim rRPFgeneAver As Double
+  /*Dim rRPFgeneAver As Double
   Dim jGene As Long, jAsiteCodon As Long, iPos As Long
   Dim tModel_kA As Double, t_pAsite As Double
   
   Dim cNumber As Long, pNumber As Long, pAsite As Long
   Dim jStart As Long, jEnd As Long, jGeneStartShift As Long
   Dim jTot As Long, mRow As Long, indCodon As Long
-  Dim i As Long, j As Long, k As Long, kA As Long
+  Dim i As Long, j As Long, k As Long, kA As Long*/
   
   
-  'Likelyhood block
-  Dim gene_RPF_ln_tModel As Double, gene_RPF_ln_RPF As Double
+  //Likelyhood block
+  //Dim gene_RPF_ln_tModel As Double, gene_RPF_ln_RPF As Double
   
-  With newRPFdata
-  jTot = UBound(.geneEnd): 'number of genes in data set
-  mRow = .geneEnd(jTot): 'number of codons in fata set
-  ReDim tModel(mRow), rpfModel(mRow)
+  //With newRPFdata
+  //jTot = UBound(.geneEnd): 'number of genes in data set
+  //mRow = .geneEnd(jTot): 'number of codons in fata set
+  //ReDim tModel(mRow), rpfModel(mRow)
   
-  jGeneStartShift = .jGeneStartShift
-  '
-' Calculate z-Factors from time ML Fingerprints
-  '
-pAsite = .pAsite:
-  pNumber = .pNumber:
-  cNumber = 64: 'Number of codons
-  '
-'Calculate model gene times from v-factors
-  ' calculate Initial  model times from zFactors
-  For jGene = 1 To jTot
-  jStart = .geneStart(jGene) + jGeneStartShift:
-  jEnd = .geneEnd(jGene)
-  For k = jStart To jEnd - pNumber
-  t_pAsite = 1: 'time barrie with a particular codon in the A-site
-  For i = 1 To pNumber
-  indCodon = .iORFcodons(i + k - 1):
-  t_pAsite = t_pAsite * zFP(i, indCodon):
-  Next i
-  kA = pAsite + k - 1: 'A-site in the original data set
-  tModel(kA) = t_pAsite:
-  Next k
-  Next jGene
+  //jGeneStartShift = .jGeneStartShift
+  //Calculate z-Factors from time ML Fingerprints
+
+  int pAsite = 15;
+  //pNumber = .pNumber:
+  int cNumber = 64; //Number of codons
+  double t_pAsite;
+  int kA, indCodon;
+  NumericVector tModel;
+
+  //Calculate model gene times from v-factors
+  // calculate Initial  model times from zFactors
+  for(int jGene = 0; jGene < jTot; jGene++){
+    //jStart = .geneStart(jGene) + jGeneStartShift:
+    //jEnd = .geneEnd(jGene)
+    for(int k = 0; k < jEnd){
+      t_pAsite = 1; //time barrie with a particular codon in the A-site
+      for(int i = 0; i < pNumber; i++){
+        indCodon = //.iORFcodons(i + k - 1)
+        t_pAsite = t_pAsite * zFP(i, indCodon);
+      }
+      kA = pAsite + k - 1; //A-site in the original data set
+      tModel(kA) = t_pAsite;
+    }
+  }
   
-  '
-Dim nCodon_Elong As Long
+/*Dim nCodon_Elong As Long
   Dim geneRPF_Elong As Double
   Dim t_Gene_Elong As Double, gene_RPF_per_Codon As Double, gene_Time_per_Codon As Double
-  Dim dRPF_kA As Double, nRPF_kA As Long
+  Dim dRPF_kA As Double, nRPF_kA As Long*/
   
   
-  tLhd_Total = 0: 'total likelyhood function
-  tLhd_Total_UB = 0: 'Upper Bound of the total likelyhood function
+  tLhd_Total = 0: //total likelyhood function
+  tLhd_Total_UB = 0: //Upper Bound of the total likelyhood function
   For jGene = 1 To jTot
   jStart = .geneStart(jGene) + jGeneStartShift:
   jEnd = .geneEnd(jGene)
