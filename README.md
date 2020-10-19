@@ -4,6 +4,12 @@ The original code in Visual Basic in an Excel macro is found in RiboTimes/excel
 
 Instructions how to run the code is found in
 
+Instructions_for_VBA_Activation_On_Your_Window_Computer.pdf
+
+and
+
+
+
 # R code
 
 Another version of the code is written in R and C++ (run in R through Rcpp).
