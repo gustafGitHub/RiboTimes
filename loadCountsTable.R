@@ -29,12 +29,13 @@ for(i in 1:length(geneUnique)){
   countsPerCodon_list[[i]] = countsPerCodon[gene_i]
 }
 
-CT <- new("loadCountsTable")
+#CT <- new("loadCountsTable")
+CT <- list()
 
-CT@codonName = codonName_list
-CT@codonIndex = codonIndex_list
-CT@geneName = geneUnique
-CT@countsPerCodon = countsPerCodon_list
+CT$codonName = codonName_list
+CT$codonIndex = codonIndex_list
+CT$geneName = geneUnique
+CT$countsPerCodon = countsPerCodon_list
 
 return(CT)
 

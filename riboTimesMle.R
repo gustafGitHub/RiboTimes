@@ -2,16 +2,17 @@ library(Rcpp)
 sourceCpp("./C/MleEstimateZ_Pavlov.cpp")
 source("loadCountsTable.R")
 
-MleClassInstance <- setClass("MleClass", 
-                             
-                             representation("Omega" = "matrix", "U" = "numeric", "cNumber" = "integer", 
-                                            "pNumber" = "integer", "mRow" = "integer", "ngenes" = "integer", "z_initial" = "matrix"), 
-                             
-                             prototype("Omega" = matrix(0), "U" = 0, "cNumber" = integer(0), "pNumber" = integer(0),
-                                       "mRow" = integer(0), "ngenes" = integer(0), "z_initial" = matrix(0)
-                             ), 
-                             
-                             contains = "loadCountsTable") 
+#MleClassInstance <- setClass("MleClass", 
+#                             
+#                             representation("Omega" = "matrix", "U" = "numeric", "cNumber" = "integer", 
+#                                            "pNumber" = "integer", "mRow" = "integer", "ngenes" = "integer", "z_initial" = "matrix"), 
+#                             
+#                             prototype("Omega" = matrix(0), "U" = 0, "cNumber" = integer(0), "pNumber" = integer(0),
+#                                       "mRow" = integer(0), "ngenes" = integer(0), "z_initial" = matrix(0)
+#                             ), 
+#                             
+#                             contains = "loadCountsTable") 
+
 
 CountsObj <- function(){
   fileName = "./data/Counts.txt"
@@ -25,7 +26,7 @@ MleInitiate <- function(CountsObj){
   z_k = 0
   g_mod = 0
   
-  ngenes = length(CountsObj@geneName)
+  ngenes = length(CountsObj$geneName)
   
   pNumber = 15
   posAsite = 8
@@ -48,10 +49,10 @@ MleInitiate <- function(CountsObj){
     
     # Calculate U_exp
     U_exp[i] = 0
-    length_gene = length(CountsObj@countsPerCodon[[i]])
-    counts_gene = CountsObj@countsPerCodon[[i]]
+    length_gene = length(CountsObj$countsPerCodon[[i]])
+    counts_gene = CountsObj$countsPerCodon[[i]]
     delta_c_seq_i = matrix(nrow = length(counts_gene), ncol = pNumber * cNumber)
-    codonIndex = CountsObj@codonIndex[[i]]
+    codonIndex = CountsObj$codonIndex[[i]]
     tGeneElong1 = length_gene - pNumber
     
     n_pc = matrix(nrow = pNumber, ncol = cNumber, data = 0)
@@ -121,8 +122,8 @@ MleInitiate <- function(CountsObj){
     for(p in 1:pNumber){
       mu_new[p] = 0
       for(i in 1:ngenes){
-        length_gene = length(CountsObj@countsPerCodon[[i]])
-        codonIndex = CountsObj@codonIndex[[i]]
+        length_gene = length(CountsObj$countsPerCodon[[i]])
+        codonIndex = CountsObj$codonIndex[[i]]
         tGeneElong = 0
         for(j in 1:(length_gene - pNumber)){
           j_relAsite = j + posAsite - 1
@@ -145,19 +146,20 @@ MleInitiate <- function(CountsObj){
   }
   
   mRow = as.integer(0)
-  for(i in 1:length(CountsObj@countsPerCodon)){mRow = mRow + length(CountsObj@countsPerCodon[[i]])}
+  for(i in 1:length(CountsObj$countsPerCodon)){mRow = mRow + length(CountsObj$countsPerCodon[[i]])}
   
-  MleObj <- new("MleClass")
+  #MleObj <- new("MleClass")
+  MleObj <- list()
   
-  MleObj@Omega = Omega_exp
-  MleObj@U = U_exp
-  MleObj@cNumber = as.integer(cNumber)
-  MleObj@pNumber = as.integer(pNumber)
-  MleObj@ngenes = as.integer(ngenes)
-  MleObj@z_initial = z_next
-  MleObj@codonIndex = C@codonIndex
-  MleObj@countsPerCodon = C@countsPerCodon
-  MleObj@mRow = mRow
+  MleObj$Omega = Omega_exp
+  MleObj$U = U_exp
+  MleObj$cNumber = as.integer(cNumber)
+  MleObj$pNumber = as.integer(pNumber)
+  MleObj$ngenes = as.integer(ngenes)
+  MleObj$z_initial = z_next
+  MleObj$codonIndex = C$codonIndex
+  MleObj$countsPerCodon = C$countsPerCodon
+  MleObj$mRow = mRow
   
   return(MleObj)
   
@@ -173,16 +175,16 @@ calculateHessian <- function(){
 
 MleAlgorithm <- function(MleObject){
   
-  MleObjectList = list()
+  #MleObjectList = list()
   
-  MleObjectList$pNumber = MleObject@pNumber
-  MleObjectList$mRow = MleObject@mRow
-  MleObjectList$ngenes = MleObject@ngenes
-  MleObjectList$countsPerCodon = MleObject@countsPerCodon
-  MleObjectList$codonIndex = MleObject@codonIndex
-  MleObjectList$z_initial = MleObject@z_initial
+  #MleObjectList$pNumber = MleObject@pNumber
+  #MleObjectList$mRow = MleObject@mRow
+  #MleObjectList$ngenes = MleObject@ngenes
+  #MleObjectList$countsPerCodon = MleObject@countsPerCodon
+  #MleObjectList$codonIndex = MleObject@codonIndex
+  #MleObjectList$z_initial = MleObject@z_initial
   
-  MleListOut = Hes_Pos_ML_Refine_zFactors(MleObjectList)
+  MleListOut = Hes_Pos_ML_Refine_zFactors(MleObject)
   
   return(MleListOut)
   
@@ -192,12 +194,12 @@ MleAlgorithm <- function(MleObject){
 UnitTests1 <- function(MleObj){
   
   Omega_ref <- read.table("./data/Omega.txt")
-  Omega = MleObj@Omega
+  Omega = MleObj$Omega
   
   test1 = sum(Omega - Omega_ref) == 0
   
   U_ref = read.table("./data/U.txt")
-  U = MleObj@U
+  U = MleObj$U
   
   test2 = sum(U - U_ref) == 0
   
