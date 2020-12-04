@@ -4,6 +4,7 @@
 #include <cmath>
 #include <vector>
 #include <string>
+#include <Rcpp.h>
 
 using std::iostream;
 using std::string;
@@ -15,6 +16,7 @@ using MatrixDouble=vector<vector <double> >;
 using MatrixLong=vector<vector <long> >;
 using D3_VectorDouble=vector<vector <vector<double> > >;
 using D3_VectorLong=vector<vector <vector<long> > >;
+using namespace Rcpp;
 
 struct RPFdataSet {
     string dataSetName;
@@ -88,6 +90,11 @@ struct RPFdataSet {
     double dK_FA_Sigma;  //Its Sigma
 };
 
+class riboTimesMLE{
+public:
+  NumericMatrix zFP_HAT;
+};
+
 void Get_Sequence_RPFs(int , const string, RPFdataSet& );
 
 void FindArrayOrder(const vector<double>& , vector<long>& );
@@ -148,12 +155,12 @@ void VB_printVector(string infoVector, vector <double>& vB){
 }
 
 
-int main(){
+void runMLE(){
 	string strDataSetFileName=
 	"C:\\Users\\MikeP\\My Documents\\CPP_Program_Languadge\\CodeBlockCpp\\ZI_30000_FA0.txt";
 	int nRPFadd=0;
 	RPFdataSet DS;
-    Get_Sequence_RPFs(nRPFadd,strDataSetFileName,DS);
+  Get_Sequence_RPFs(nRPFadd,strDataSetFileName,DS);
 
 	string outPutFileStatistics=
 	"C:\\Users\\MikeP\\My Documents\\CPP_Program_Languadge\\CodeBlockCpp\\ZI_OutPut.txt";
@@ -211,7 +218,7 @@ int main(){
     Print_vFP_Full_As_MatrixB(zFP_OutputFile,strText, strNorm, iPrint_rpfOmega,
         iPrint_Col_Corr, pC_First, pC_Last, DS, jSet,
 		zFP_long, zFP_Sigma_long, wFP_long);
-    return 0;
+    //return 0;
 }
 
 // ================================
