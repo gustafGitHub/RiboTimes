@@ -4,19 +4,16 @@
 #include <cmath>
 #include <vector>
 #include <string>
-#include <Rcpp.h>
 
 using std::iostream;
 using std::string;
 using std::vector;
 using std::fstream;
-//[[Rcpp::plugins(cpp11)]]
 
-using MatrixDouble=vector<vector <double> >;
-using MatrixLong=vector<vector <long> >;
-using D3_VectorDouble=vector<vector <vector<double> > >;
-using D3_VectorLong=vector<vector <vector<long> > >;
-using namespace Rcpp;
+using MatrixDouble=vector<vector <double>>;
+using MatrixLong=vector<vector <long>>;
+using D3_VectorDouble=vector<vector <vector<double>>>;
+using D3_VectorLong=vector<vector <vector<long>>>;
 
 struct RPFdataSet {
     string dataSetName;
@@ -90,12 +87,6 @@ struct RPFdataSet {
     double dK_FA_Sigma;  //Its Sigma
 };
 
-void runMLE();
-
-RCPP_MODULE(mod) {
-  function( "runMLE", &runMLE );
-}
-
 void Get_Sequence_RPFs(int , const string, RPFdataSet& );
 
 void FindArrayOrder(const vector<double>& , vector<long>& );
@@ -156,15 +147,15 @@ void VB_printVector(string infoVector, vector <double>& vB){
 }
 
 
-void runMLE(){
+int main(){
 	string strDataSetFileName=
-	"/Users/gustafullman/Documents/src/RiboTimes/data/ZI_30000_FA0.txt";
+	"C:\\Users\\MikeP\\My Documents\\CPP_Program_Languadge\\CodeBlockCpp\\ZI_30000_FA0.txt";
 	int nRPFadd=0;
 	RPFdataSet DS;
-  Get_Sequence_RPFs(nRPFadd,strDataSetFileName,DS);
+    Get_Sequence_RPFs(nRPFadd,strDataSetFileName,DS);
 
 	string outPutFileStatistics=
-	"/Users/gustafullman/Documents/src/RiboTimes/data/ZI_OutPut.txt";
+	"C:\\Users\\MikeP\\My Documents\\CPP_Program_Languadge\\CodeBlockCpp\\ZI_OutPut.txt";
 	Print_DataSet_Statistics(outPutFileStatistics,DS);
 
 	long jSet=0, pAsite=8, pNumber=15, jGeneStartShift=0;
@@ -172,14 +163,14 @@ void runMLE(){
 	vector<double> zFP_long, zFP_Sigma_long, wFP_long;
 
 	string reportOut_zHAT=
-	"/Users/gustafullman/Documents/src/RiboTimes/data/Z_HAT_Report.txt";
+	"C:\\Users\\MikeP\\My Documents\\CPP_Program_Languadge\\CodeBlockCpp\\Z_HAT_Report.txt";
 
 	Get_ML_zHAT(reportOut_zHAT,jSet,pAsite,pNumber,jGeneStartShift,DS,
         tML_long,tML_Sigma_long,wML_long);
 
     // print zHAT results
     string zHAT_OutputFile=
-    "/Users/gustafullman/Documents/src/RiboTimes/data/zFP_HAT_OutPut.txt";
+    "C:\\Users\\MikeP\\My Documents\\CPP_Program_Languadge\\CodeBlockCpp\\zFP_HAT_OutPut.txt";
         string strText="First guess zHAT coefficients";
         string strNorm="NATIVE";
         int iPrint_rpfOmega=1;
@@ -191,7 +182,7 @@ void runMLE(){
 		tML_long,tML_Sigma_long,wML_long);
 
     string zFP_Refinementr_Log=
-    "/Users/gustafullman/Documents/src/RiboTimes/data/Refinement_Log.txt";
+    "C:\\Users\\MikeP\\My Documents\\CPP_Program_Languadge\\CodeBlockCpp\\Refinement_Log.txt";
     Hes_Pos_ML_Refine_zFactors(zFP_Refinementr_Log, jSet, pAsite, pNumber, jGeneStartShift,DS,
         tML_long,tML_Sigma_long,wML_long, zFP_long, zFP_Sigma_long, wFP_long);
 
@@ -199,8 +190,7 @@ void runMLE(){
     int kIter=0, kEnd=0;
     do{
         std::cout<<"GradNorn<0.5? Stop? To stop enter 1; to continue enter 0" << std::endl;
-        //std::cin >>  kEnd;
-        kEnd = 0;
+        std::cin >>  kEnd;
         if(kEnd==1) {break;}
 
     Hes_Pos_ML_Refine_zFactors(zFP_Refinementr_Log, jSet, pAsite, pNumber, jGeneStartShift,DS,
@@ -210,7 +200,7 @@ void runMLE(){
 
     // print zFP refined results
     string zFP_OutputFile=
-    "/Users/gustafullman/Documents/src/RiboTimes/data/zFP_Refined_OutPut.txt";
+    "C:\\Users\\MikeP\\My Documents\\CPP_Program_Languadge\\CodeBlockCpp\\zFP_Refined_OutPut.txt";
        strText="Refined zFP factors";
         strNorm="NATIVE";
         iPrint_rpfOmega=0;
@@ -220,7 +210,7 @@ void runMLE(){
     Print_vFP_Full_As_MatrixB(zFP_OutputFile,strText, strNorm, iPrint_rpfOmega,
         iPrint_Col_Corr, pC_First, pC_Last, DS, jSet,
 		zFP_long, zFP_Sigma_long, wFP_long);
-    //return 0;
+    return 0;
 }
 
 // ================================
@@ -695,7 +685,7 @@ int jGene;
     dataOutput.close();
 
 	// OUTPUT for DATASET GENES
-	std::ofstream geneDataOutput("/Users/gustafullman/Documents/src/RiboTimes/data/ZI_GeneOutput.txt");
+	std::ofstream geneDataOutput("C:\\Users\\MikeP\\My Documents\\CPP_Program_Languadge\\CodeBlockCpp\\ZI_GeneOutput.txt");
 
     vector<double> aVector(jTot1,0.0);
 	vector<long> iVectorOrder(jTot1,0);
