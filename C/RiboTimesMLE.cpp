@@ -101,7 +101,11 @@ struct RPFdataSet {
     double dK_FA_Sigma;  //Its Sigma
 };
 
-void runMLE();
+// Rcpp interface
+
+List outputList;
+
+List runMLE();
 
 RCPP_MODULE(mod) {
   function( "runMLE", &runMLE );
@@ -109,9 +113,10 @@ RCPP_MODULE(mod) {
 
 // SUB Declarations
 
-void Get_Sequence_RPFs(int , const string, RPFdataSet& );
+void Get_Sequence_RPFs(int , const string, RPFdataSet&);
 
 void FindArrayOrder(const vector<double>& , vector<long>& );
+
 void Print_DataSet_Statistics(const string, RPFdataSet&);
 
 void Get_ML_zHAT(const string, long, long, long, long, RPFdataSet& ,
@@ -166,7 +171,7 @@ void VB_printVector(string infoVector, vector <double>& vB){
 		std::cout<<std::endl;
 }
 
-void runMLE(){
+List runMLE(){
 
 	string strDataSetFileName=
 	"/Users/gustafullman/Documents/src/RiboTimes/data/ZI_30000_FA0.txt";
@@ -243,7 +248,35 @@ void runMLE(){
         double tol_R2=0.1;
     Report_R2_zFP_Statistics(R2_OutPutFile, jSet, strMode,  strMark,strWeight, strInfo,
                              tol_R2, pC_First, pC_Last, DS,  zFP_long, zFP_Sigma_long);
-    // return 0;
+    
+    
+    // Add some elements of DS to outputList
+    
+    outputList["dataSetName"] = DS.dataSetName;
+    outputList["DS.dataSubSet_RPF_Total"] = DS.dataSubSet_RPF_Total;
+    outputList["doublingTime"] = DS.doublingTime;
+    outputList["pAsite"] = DS.pAsite;
+    outputList["pNumber"] = DS.pNumber;
+    outputList["jGeneStartShift"] = DS.jGeneStartShift;
+    outputList["cNumber"] = DS.cNumber;
+    outputList["geneCodeTable"] = DS.geneCodeTable;
+    outputList["geneCodeTableOrdered"] = DS.geneCodeTableOrdered;
+    outputList["rCodonSeq"] = DS.rCodonSeq;
+    outputList["geneStart"] = DS.geneStart;
+    outputList["geneEnd"] = DS.geneEnd;
+    outputList["jTot"] = DS.jTot;
+    outputList["geneCodons"] = DS.geneCodons;
+    outputList["geneRPFtotal"] = DS.geneRPFtotal;
+    outputList["rpfOmegaExper"] = DS.rpfOmegaExper;
+    outputList["iORFcodons"] = DS.iORFcodons;
+    outputList["nRPF"] = DS.nRPF;
+
+    // Add some other variables of interest to outputList
+    
+    outputList["zFP"] = zFP_long;
+    outputList["zFP_Sigma"] = zFP_Sigma_long;
+    
+    return outputList;
 }
 
 // ================================
