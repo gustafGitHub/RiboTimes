@@ -42,6 +42,7 @@ outputList <- MleAlgorithm(InputFile, PathToOutput)
 The output from the code, outputList, is of the type "List" and contains the following fields
 
 | dataSetName | Name of the dataset |
+| ----------- | ------------------- |
 | dataSubSet_RPF_Total | Total number of RPFs in dataset |
 
 
