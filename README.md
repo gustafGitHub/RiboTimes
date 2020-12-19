@@ -51,10 +51,33 @@ The output from the code, outputList, is of the type "List" and contains the fol
 | dataSubSet_RPF_Total | Total number of RPFs in dataset |
 | doublingTime | Time factor extracted from doubling time |
 | pAsite | Position of the A-site in the local context |
+| pNumber | The length of the local contaxt in codons |
+| cNumber | The number of codons = 64 |
+| geneCodeTable | Standard Genetic Code Table |
+| geneCodeTableOrdered | Re-Ordered Standard Genetic Code Table |
+| rCodonSeq | Codon sequence of Data Set |
+| geneStart | Start codon index of gene |
+| geneEnd | End codon index of gene |
+| jTot | Number of genes in data set |
+| geneCodons | Total number of codons in gene |
+| geneRPFtotal | Total Number of RPFs in a gene |
+| geneRPFdensity | RPF density in a gene |
+| gene_Elong_AA | Number of Codons in the inner Gene par |
+| geneRPF_Elong | Number of RPFs in the inner Gene part |
+| geneU_Elong | |
+| geneRPF_Elong_Dens | RPFs/codon=Ui/nCodons in the inner Gene part |
+| gene_Model_Density | Ui/Ti for the inner Gene part |
+| gene_Elong_N2_Time | |
+| iORFcodons | Index (from 1 to 64) that correspond to codon name |
+| nRPF | RPFs ascribed to the codon in the dataset (A-site) |
+| timeTransLoc | Translocation time |
 
-### Alternative output ```PathToOutput``` can be imported to excel and accessed from there.
 
-The files that are written in 
+### Alternative output 
+
+The files that are written in ```PathToOutput``` can be imported to excel and accessed from there.
+
+ 
 
 
 # Code in Visual Basic in Excel

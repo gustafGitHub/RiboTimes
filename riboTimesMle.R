@@ -172,6 +172,14 @@ MleAlgorithm <- function(InputFile, PathToOutput){
   outputList$geneRPF_Elong = outputList1$geneRPF_Elong[2:length(outputList1$geneRPF_Elong)]
   outputList$geneU_Elong = outputList1$geneU_Elong[2:length(outputList1$geneU_Elong)]
   outputList$geneRPF_Elong_Dens = outputList1$geneRPF_Elong_Dens[2:length(outputList1$geneRPF_Elong_Dens)]
+  outputList$gene_Model_Density = outputList1$gene_Model_Density[2:length(outputList1$gene_Model_Density)]
+  outputList$gene_Elong_N2_Time = outputList1$gene_Elong_N2_Time[2:length(outputList1$gene_Elong_N2_Time)]
+  outputList$iORFcodons = outputList1$iORFcodons[2:length(outputList1$iORFcodons)]
+  outputList$nRPF = outputList1$nRPF[2:length(outputList1$nRPF)]
+  outputList$timeTransLoc = outputList1$timeTransLoc[2:length(outputList1$timeTransLoc)]
+  
+  outputList$zFP = outputList1$zFP[2:length(outputList1$zFP)]
+  outputList$zFP_Sigma = outputList1$zFP_Sigma[2:length(outputList1$zFP_Sigma)]
   
   return(outputList1)
   

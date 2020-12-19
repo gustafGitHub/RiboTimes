@@ -257,7 +257,7 @@ List runMLE(string strDataSetFileName, string strDataSetFilePath){
     outputList["doublingTime"] = DS.doublingTime;
     outputList["pAsite"] = DS.pAsite;
     outputList["pNumber"] = DS.pNumber;
-    outputList["jGeneStartShift"] = DS.jGeneStartShift;
+    // outputList["jGeneStartShift"] = DS.jGeneStartShift;
     outputList["cNumber"] = DS.cNumber;
     outputList["geneCodeTable"] = DS.geneCodeTable;
     outputList["geneCodeTableOrdered"] = DS.geneCodeTableOrdered;
