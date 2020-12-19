@@ -29,6 +29,7 @@ source("riboTimesMle.R")
 2. Set the input and output files
 
 InputFile = "/<Path to RiboTimes folder>/RiboTimes/data/ZI_30000_FA0.txt"
+
 PathToOutput = "<Path to RiboTimes folder>/RiboTimes/data/"
 
 3. Run the code
@@ -41,6 +42,7 @@ outputList <- MleAlgorithm(InputFile, PathToOutput)
 The output from the code, outputList, is of the type "List" and contains the following fields
 
 | dataSetName | Name of the dataset |
+| dataSubSet_RPF_Total | Total number of RPFs in dataset |
 
 
 # Code in Visual Basic in Excel
