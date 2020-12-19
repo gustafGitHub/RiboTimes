@@ -156,7 +156,7 @@ MleInitiate <- function(CountsObj){
   
 }
 
-MleAlgorithm <- function(){
+MleAlgorithm <- function(InputFile, PathToOutput){
   
   outputList1 = runMLE(InputFile, PathToOutput)
   
@@ -171,6 +171,7 @@ MleAlgorithm <- function(){
   outputList$gene_Elong_AA = outputList1$gene_Elong_AA[2:length(outputList1$gene_Elong_AA)]
   outputList$geneRPF_Elong = outputList1$geneRPF_Elong[2:length(outputList1$geneRPF_Elong)]
   outputList$geneU_Elong = outputList1$geneU_Elong[2:length(outputList1$geneU_Elong)]
+  outputList$geneRPF_Elong_Dens = outputList1$geneRPF_Elong_Dens[2:length(outputList1$geneRPF_Elong_Dens)]
   
   return(outputList1)
   
