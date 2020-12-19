@@ -10,10 +10,10 @@ loadCountsTable <- function(fileName){
 countsTable <- read.table(file = fileName, sep = "\t", stringsAsFactors = F)
 CodonIndexes <- read.table("./data/CodonIndexes.txt")
 codonNameOrder = substr(CodonIndexes[[2]], 1,3)
-codonName <- countsTable[,3]
+codonName <- countsTable[,2]
 codonIndex <- codonToIndexVar(countsTable[,3], codonNameOrder)
-geneName <- countsTable[,2]
-countsPerCodon <- countsTable[,4]
+geneName <- countsTable[,1]
+countsPerCodon <- countsTable[,3]
 
 codonName_list = list()
 codonIndex_list = list()
