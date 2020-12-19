@@ -105,7 +105,7 @@ struct RPFdataSet {
 
 List outputList;
 
-List runMLE();
+List runMLE(string, string);
 
 RCPP_MODULE(mod) {
   function( "runMLE", &runMLE );
@@ -171,31 +171,31 @@ void VB_printVector(string infoVector, vector <double>& vB){
 		std::cout<<std::endl;
 }
 
-List runMLE(){
+List runMLE(string strDataSetFileName, string strDataSetFilePath){
 
-	string strDataSetFileName=
-	"/Users/gustafullman/Documents/src/RiboTimes/data/ZI_30000_FA0.txt";
+	//string strDataSetFileName=
+	//"/Users/gustafullman/Documents/src/RiboTimes/data/ZI_30000_FA0.txt";
 	int nRPFadd=0;
 	RPFdataSet DS;
   Get_Sequence_RPFs(nRPFadd,strDataSetFileName,DS);
 
-	string outPutFileStatistics=
-	"/Users/gustafullman/Documents/src/RiboTimes/data/ZI_OutPut.txt";
+	string outPutFileStatistics = strDataSetFilePath + "ZI_OutPut.txt";
+	// "/Users/gustafullman/Documents/src/RiboTimes/data/ZI_OutPut.txt";
 	Print_DataSet_Statistics(outPutFileStatistics,DS);
 
 	long jSet=0, pAsite=8, pNumber=15, jGeneStartShift=0;
 	vector<double> tML_long, tML_Sigma_long, wML_long;
 	vector<double> zFP_long, zFP_Sigma_long, wFP_long;
 
-	string reportOut_zHAT=
-	"/Users/gustafullman/Documents/src/RiboTimes/data/Z_HAT_Report.txt";
+	string reportOut_zHAT = strDataSetFilePath + "Z_HAT_Report.txt";
+	//"/Users/gustafullman/Documents/src/RiboTimes/data/Z_HAT_Report.txt";
 
 	Get_ML_zHAT(reportOut_zHAT,jSet,pAsite,pNumber,jGeneStartShift,DS,
         tML_long,tML_Sigma_long,wML_long);
 
     // print zHAT results
-    string zHAT_OutputFile=
-    "/Users/gustafullman/Documents/src/RiboTimes/data/zFP_HAT_OutPut.txt";
+    string zHAT_OutputFile = strDataSetFilePath + "zFP_HAT_OutPut.txt";
+    //"/Users/gustafullman/Documents/src/RiboTimes/data/zFP_HAT_OutPut.txt";
         string strText="First guess zHAT coefficients";
         string strNorm="NATIVE";
         int iPrint_rpfOmega=1;
@@ -206,8 +206,8 @@ List runMLE(){
         iPrint_Col_Corr, pC_First, pC_Last, DS, jSet,
 		tML_long,tML_Sigma_long,wML_long);
 
-    string zFP_Refinementr_Log=
-    "/Users/gustafullman/Documents/src/RiboTimes/data/Refinement_Log.txt";
+    string zFP_Refinementr_Log = strDataSetFilePath + "Refinement_Log.txt";
+    //"/Users/gustafullman/Documents/src/RiboTimes/data/Refinement_Log.txt";
     Hes_Pos_ML_Refine_zFactors(zFP_Refinementr_Log, jSet, pAsite, pNumber, jGeneStartShift,DS,
         tML_long,tML_Sigma_long,wML_long, zFP_long, zFP_Sigma_long, wFP_long);
 
@@ -226,8 +226,8 @@ List runMLE(){
     } while(kIter<7||kEnd==1);
 
     // print zFP refined results
-    string zFP_OutputFile=
-    "/Users/gustafullman/Documents/src/RiboTimes/data/zFP_Refined_OutPut.txt";
+    string zFP_OutputFile = strDataSetFilePath + "zFP_Refined_OutPut.txt";
+    //"/Users/gustafullman/Documents/src/RiboTimes/data/zFP_Refined_OutPut.txt";
        strText="Refined zFP factors";
         strNorm="NATIVE";
         iPrint_rpfOmega=0;
@@ -239,8 +239,8 @@ List runMLE(){
 		zFP_long, zFP_Sigma_long, wFP_long);
 
 	// print R2 gene statistics
-    string R2_OutPutFile=
-    "/Users/gustafullman/Documents/src/RiboTimes/data/R2_OutPut.txt";
+    string R2_OutPutFile = strDataSetFilePath + "R2_OutPut.txt";
+    //"/Users/gustafullman/Documents/src/RiboTimes/data/R2_OutPut.txt";
         string strMode="";
         string strMark="MARK";
         string strWeight="WEIGHTED";
@@ -253,7 +253,7 @@ List runMLE(){
     // Add some elements of DS to outputList
     
     outputList["dataSetName"] = DS.dataSetName;
-    outputList["DS.dataSubSet_RPF_Total"] = DS.dataSubSet_RPF_Total;
+    outputList["dataSubSet_RPF_Total"] = DS.dataSubSet_RPF_Total;
     outputList["doublingTime"] = DS.doublingTime;
     outputList["pAsite"] = DS.pAsite;
     outputList["pNumber"] = DS.pNumber;
@@ -265,11 +265,26 @@ List runMLE(){
     outputList["geneStart"] = DS.geneStart;
     outputList["geneEnd"] = DS.geneEnd;
     outputList["jTot"] = DS.jTot;
+    
     outputList["geneCodons"] = DS.geneCodons;
     outputList["geneRPFtotal"] = DS.geneRPFtotal;
-    outputList["rpfOmegaExper"] = DS.rpfOmegaExper;
+    outputList["geneRPFdensity"] = DS.geneRPFdensity;
+    outputList["gene_Elong_AA"] = DS.gene_Elong_AA;
+    outputList["geneRPF_Elong"] = DS.geneRPF_Elong;
+    outputList["geneU_Elong"] = DS.geneU_Elong;
+    outputList["geneRPF_Elong_Dens"] = DS.geneRPF_Elong_Dens;
+    outputList["gene_Model_Density"] = DS.gene_Model_Density;
+    outputList["gene_Elong_N2_Time"] = DS.gene_Elong_N2_Time;
+    
     outputList["iORFcodons"] = DS.iORFcodons;
     outputList["nRPF"] = DS.nRPF;
+    
+    outputList["timeTransLoc"] = DS.timeTransLoc;
+    outputList["timeTransLocR2"] = DS.timeTransLocR2;
+    outputList["timeTransLocSigma"] = DS.timeTransLocSigma;
+    outputList["timeTransLoc_Model"] = DS.timeTransLoc_Model;
+    outputList["timeTransLoc_Model_R2"] = DS.timeTransLoc_Model_R2;
+    outputList["timeTransLocSigma_Model_Sigma"] = DS.timeTransLoc_Model_Sigma;
 
     // Add some other variables of interest to outputList
     

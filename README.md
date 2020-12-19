@@ -1,23 +1,10 @@
-# Code in Visual Basic in Excel
-
-The original code in Visual Basic in an Excel macro is found in RiboTimes/excel
-
-Instructions how to run the code is found in
-
-Instructions_for_VBA_Activation_On_Your_Window_Computer.pdf
-
-and
-
-Instructions_to_Run_RPF_to_zPC_Transformer.pdf
-
-
 # R code
 
-Another version of the code is written in R and C++ (run in R through Rcpp).
+The code is written in R and C++ (run in R through Rcpp).
 
 ### Required software
 
-This code requires R and a C++ compiler.
+This code requires R (for instance RStudio) and a C++ compiler.
 
 ### Preparation of data
 
@@ -35,18 +22,18 @@ git clone https://github.com/gustafGitHub/RiboTimes.git
 
 ### Run code
 
-In an R command window, set your selected path containing the RiboTimes repository as working directory
 
-setwd("~/RiboTimes")
+### Output variables
 
-To compile Rcpp code and initialise the R functions, type
 
-source("riboTimesMle.R")
+# Code in Visual Basic in Excel
 
-To load the data, type
+The original code in Visual Basic in an Excel macro is found in RiboTimes/excel
 
-C <- CountsObj()
+Instructions how to run the code is found in
 
-To initiate the Mle algorithm and calculate the initial guess for the Mle algorithm, type
+Instructions_for_VBA_Activation_On_Your_Window_Computer.pdf
 
-C <- MleInitiate(C)
+and
+
+Instructions_to_Run_RPF_to_zPC_Transformer.pdf

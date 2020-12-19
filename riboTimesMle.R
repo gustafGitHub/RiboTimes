@@ -1,21 +1,12 @@
 library(Rcpp)
-sourceCpp("./C/MleEstimateZ_Pavlov.cpp")
+sourceCpp("./C/RiboTimesMLE.cpp")
 source("loadCountsTable.R")
 
-#MleClassInstance <- setClass("MleClass", 
-#                             
-#                             representation("Omega" = "matrix", "U" = "numeric", "cNumber" = "integer", 
-#                                            "pNumber" = "integer", "mRow" = "integer", "ngenes" = "integer", "z_initial" = "matrix"), 
-#                             
-#                             prototype("Omega" = matrix(0), "U" = 0, "cNumber" = integer(0), "pNumber" = integer(0),
-#                                       "mRow" = integer(0), "ngenes" = integer(0), "z_initial" = matrix(0)
-#                             ), 
-#                             
-#                             contains = "loadCountsTable") 
-
+InputFile = "/Users/gustafullman/Documents/src/RiboTimes/data/ZI_30000_FA0.txt"
+PathToOutput = "/Users/gustafullman/Documents/src/RiboTimes/data/"
+fileName = "/Users/gustafullman/Documents/src/RiboTimes/data/ZI_30000_FA0_table.txt"
 
 CountsObj <- function(){
-  fileName = "./data/Counts.txt"
   CountsObj<-loadCountsTable(fileName)
   return(CountsObj)
 }
@@ -165,63 +156,29 @@ MleInitiate <- function(CountsObj){
   
 }
 
-
-calculateHessian <- function(){
+MleAlgorithm <- function(){
   
+  outputList1 = runMLE(InputFile, PathToOutput)
   
+  outputList$geneCodeTable = outputList1$geneCodeTable[2:length(outputList1$geneCodeTable)]
+  outputList$geneCodeTableOrdered = outputList1$geneCodeTableOrdered[2:length(outputList1$geneCodeTableOrdered)]
+  outputList$rCodonSeq = outputList1$rCodonSeq[2:length(outputList1$rCodonSeq)]
+  outputList$geneStart = outputList1$geneStart[2:length(outputList1$geneStart)]
+  outputList$geneEnd = outputList1$geneEnd[2:length(outputList1$geneEnd)]
+  outputList$geneCodons = outputList1$geneCodons[2:length(outputList1$geneCodons)]
+  outputList$geneRPFtotal = outputList1$geneRPFtotal[2:length(outputList1$geneRPFtotal)]
+  outputList$geneRPFdensity = outputList1$geneRPFdensity[2:length(outputList1$geneRPFdensity)]
+  outputList$gene_Elong_AA = outputList1$gene_Elong_AA[2:length(outputList1$gene_Elong_AA)]
+  outputList$geneRPF_Elong = outputList1$geneRPF_Elong[2:length(outputList1$geneRPF_Elong)]
+  outputList$geneU_Elong = outputList1$geneU_Elong[2:length(outputList1$geneU_Elong)]
   
-}
-
-
-MleAlgorithm <- function(MleObject){
-  
-  #MleObjectList = list()
-  
-  #MleObjectList$pNumber = MleObject@pNumber
-  #MleObjectList$mRow = MleObject@mRow
-  #MleObjectList$ngenes = MleObject@ngenes
-  #MleObjectList$countsPerCodon = MleObject@countsPerCodon
-  #MleObjectList$codonIndex = MleObject@codonIndex
-  #MleObjectList$z_initial = MleObject@z_initial
-  
-  MleListOut = Hes_Pos_ML_Refine_zFactors(MleObject)
-  
-  return(MleListOut)
+  return(outputList1)
   
 }
 
 
-UnitTests1 <- function(MleObj){
-  
-  Omega_ref <- read.table("./data/Omega.txt")
-  Omega = MleObj$Omega
-  
-  test1 = sum(Omega - Omega_ref) == 0
-  
-  U_ref = read.table("./data/U.txt")
-  U = MleObj$U
-  
-  test2 = sum(U - U_ref) == 0
-  
-  z_initial = read.table("./data/zInitial.txt")
-  test3 = sum(round(1e8*Mle@z_initial) - round(1e8*z_initial)) == 0
-  
-  #mH_PS_Pos1 = read.table("./data/mH_PS_Pos1.txt")
-  #test4 = sum(round(1e2*Mle@mH_PS_Pos1) - round(1e2*mH_PS_Pos1))
-  
-  testsAll = c(test1, test2, test3)
-  
-  return(testsAll)
-  
-}
 
-UnitTests2 <- function(MleList){
- 
-  mH_PS_Pos1 = read.table("./data/mH_PS_Pos1.txt")
-  test1 = sum(round(1e2*MleList$mH_PS_Pos1) - round(1e2*mH_PS_Pos1)) == 0
+UnitTests <- function(MleObj){
   
-  testsAll = c(test1)
   
-  return(testsAll)
-   
 }
