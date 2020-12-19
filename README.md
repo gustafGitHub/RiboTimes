@@ -49,6 +49,12 @@ The output from the code, outputList, is of the type "List" and contains the fol
 | ---------- | ----------- |
 | dataSetName | Name of the dataset |
 | dataSubSet_RPF_Total | Total number of RPFs in dataset |
+| doublingTime | Time factor extracted from doubling time |
+| pAsite | Position of the A-site in the local context |
+
+### Alternative output ```PathToOutput``` can be imported to excel and accessed from there.
+
+The files that are written in 
 
 
 # Code in Visual Basic in Excel
