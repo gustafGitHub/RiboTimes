@@ -163,19 +163,44 @@ MleAlgorithm <- function(InputFile, PathToOutput){
   outputList$geneCodeTable = outputList1$geneCodeTable[2:length(outputList1$geneCodeTable)]
   outputList$geneCodeTableOrdered = outputList1$geneCodeTableOrdered[2:length(outputList1$geneCodeTableOrdered)]
   outputList$rCodonSeq = outputList1$rCodonSeq[2:length(outputList1$rCodonSeq)]
+  outputList$geneName = outputList1$geneName[2:length(outputList1$geneName)]
   outputList$geneStart = outputList1$geneStart[2:length(outputList1$geneStart)]
   outputList$geneEnd = outputList1$geneEnd[2:length(outputList1$geneEnd)]
   outputList$geneCodons = outputList1$geneCodons[2:length(outputList1$geneCodons)]
   outputList$geneRPFtotal = outputList1$geneRPFtotal[2:length(outputList1$geneRPFtotal)]
   outputList$geneRPFdensity = outputList1$geneRPFdensity[2:length(outputList1$geneRPFdensity)]
   outputList$gene_Elong_AA = outputList1$gene_Elong_AA[2:length(outputList1$gene_Elong_AA)]
-  outputList$geneRPF_Elong = outputList1$geneRPF_Elong[2:length(outputList1$geneRPF_Elong)]
-  outputList$geneU_Elong = outputList1$geneU_Elong[2:length(outputList1$geneU_Elong)]
-  outputList$geneRPF_Elong_Dens = outputList1$geneRPF_Elong_Dens[2:length(outputList1$geneRPF_Elong_Dens)]
-  outputList$gene_Model_Density = outputList1$gene_Model_Density[2:length(outputList1$gene_Model_Density)]
-  outputList$gene_Elong_N2_Time = outputList1$gene_Elong_N2_Time[2:length(outputList1$gene_Elong_N2_Time)]
+  outputList$gene_Ci_Exper = outputList1$gene_Ci_Exper[2:length(outputList1$gene_Ci_Exper)]
+  
+  outputList$gene_di_Exper = outputList1$gene_di_Exper[2:length(outputList1$gene_di_Exper)]
+  outputList$gene_fi_Model = outputList1$gene_fi_Model[2:length(outputList1$gene_fi_Model)]
+  outputList$gene_Gi_Model = outputList1$gene_Gi_Model[2:length(outputList1$gene_Gi_Model)]
+  outputList$gene_Gi_Model_Time = outputList1$gene_Gi_Model_Time[2:length(outputList1$gene_Gi_Model_Time)]
+  outputList$gene_Ti_Model_Time_Abs = outputList1$gene_Ti_Model_Time_Abs[2:length(outputList1$gene_Ti_Model_Time_Abs)]
+  
+  outputList$global_Time_Factor = outputList1$global_Time_Factor[2:length(outputList1$global_Time_Factor)]
+  outputList$rpfOmegaExper = outputList1$rpfOmegaExper[2:length(outputList1$rpfOmegaExper)]
+  
+
   outputList$iORFcodons = outputList1$iORFcodons[2:length(outputList1$iORFcodons)]
+  outputList$indCodonOrder = outputList1$indCodonOrder[2:length(outputList1$indCodonOrder)]
   outputList$nRPF = outputList1$nRPF[2:length(outputList1$nRPF)]
+  outputList$nRPFadded = outputList1$nRPFadded[2:length(outputList1$nRPFadded)]
+  
+  outputList$sij_Exper = outputList1$sij_Exper[2:length(outputList1$sij_Exper)]
+  outputList$sij_Model = outputList1$sij_Model[2:length(outputList1$sij_Model)]
+  outputList$sij_Model_Sigma = outputList1$sij_Model_Sigma[2:length(outputList1$sij_Model_Sigma)]
+  outputList$sij_Model_Time = outputList1$sij_Model_Time[2:length(outputList1$sij_Model_Time)]
+  outputList$sij_Model_Time_Sigma = outputList1$sij_Model_Time_Sigma[2:length(outputList1$sij_Model_Time_Sigma)]
+  
+  outputList$gij_Model = outputList1$gij_Model[2:length(outputList1$gij_Model)]
+  outputList$gij_Model_Sigma = outputList1$gij_Model_Sigma[2:length(outputList1$gij_Model_Sigma)]
+  
+  outputList$gij_Model_Time = outputList1$gij_Model_Time[2:length(outputList1$gij_Model_Time)]
+  outputList$gij_Model_Time_Sigma = outputList1$gij_Model_Time_Sigma[2:length(outputList1$gij_Model_Time_Sigma)]
+  
+  outputList$tij_Model_Time_Abs = outputList1$tij_Model_Time_Abs[2:length(outputList1$tij_Model_Time_Abs)]
+  outputList$tij_Model_Time_Abs_Sigma = outputList1$tij_Model_Time_Abs_Sigma[2:length(outputList1$tij_Model_Time_Abs_Sigma)]
   
   outputList$zFP = outputList1$zFP[2:length(outputList1$zFP)]
   outputList$zFP_Sigma = outputList1$zFP_Sigma[2:length(outputList1$zFP_Sigma)]
@@ -183,8 +208,6 @@ MleAlgorithm <- function(InputFile, PathToOutput){
   return(outputList1)
   
 }
-
-
 
 UnitTests <- function(MleObj){
   
