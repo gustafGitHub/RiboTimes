@@ -205,7 +205,7 @@ MleAlgorithm <- function(InputFile, PathToOutput){
   outputList$zFP = outputList1$zFP[2:length(outputList1$zFP)]
   outputList$zFP_Sigma = outputList1$zFP_Sigma[2:length(outputList1$zFP_Sigma)]
   
-  return(outputList1)
+  return(outputList)
   
 }
 
