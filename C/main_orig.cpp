@@ -15,6 +15,17 @@ using MatrixLong=vector<vector <long>>;
 using D3_VectorDouble=vector<vector <vector<double>>>;
 using D3_VectorLong=vector<vector <vector<long>>>;
 
+struct DS_Corr {
+		string Name;
+        double setA_Aver;
+		double setA_Sigma;
+        double setB_Aver;
+		double setB_Sigma;
+        double setAB_Corr_Raw;
+		double setAB_Corr_Pearson;
+        double setAB_R2;
+	};
+
 struct RPFdataSet {
     string dataSetName;
     vector<string> dataSubSetName;
@@ -87,6 +98,7 @@ struct RPFdataSet {
     double dK_FA_Sigma;  //Its Sigma
 };
 
+// SUB Declarations
 void Get_Sequence_RPFs(int , const string, RPFdataSet& );
 
 void FindArrayOrder(const vector<double>& , vector<long>& );
@@ -94,16 +106,6 @@ void Print_DataSet_Statistics(const string, RPFdataSet&);
 
 void Get_ML_zHAT(const string, long, long, long, long, RPFdataSet& ,
         vector<double>& , vector<double>& , vector<double>& );
-
-
-void VB_FactorLUPA (int, const MatrixDouble& , vector<long>& ,
-                        MatrixDouble& , MatrixDouble& , double& );
-
-void VB_SolveLUPA(int& , const MatrixDouble& , const MatrixDouble& ,
-        const vector<long>& ,vector<double>& , const vector<double>& );
-
-void VB_InvertLUPA(int& , MatrixDouble& , MatrixDouble& ,
-                                    vector<long>& , MatrixDouble& );
 
 void Get_Log_Likelihood(const long& , RPFdataSet& , MatrixDouble& ,
     vector<double>&, vector<double>& , double& ,
@@ -124,8 +126,10 @@ void Print_vFP_Full_As_MatrixB(const string, string, const string, const int,
         int, int, int, RPFdataSet&, const long ,
 		vector<double>& , vector<double>& , vector<double>& );
 
-void VB_LUPA_Solve(int , const MatrixDouble& ,
+void VB_Gauss_Solve(int , const MatrixDouble& ,
 								vector<double>& , const vector<double>& );
+
+void VB_LUPA_Invert(int, const MatrixDouble& , MatrixDouble& );
 
 void Get_PCorr_Rows_mA_New(long& , long& , const MatrixDouble& ,
 								const MatrixDouble& , vector<double>& ,
@@ -134,6 +138,12 @@ void Get_PCorr_Rows_mA_New(long& , long& , const MatrixDouble& ,
 void Get_PCorr_Cols_mA_New(long , long , const MatrixDouble& ,
 								const MatrixDouble& , vector<double>& ,
 									vector<double>& , MatrixDouble& );
+void Report_R2_zFP_Statistics(string , long , string , string ,
+			string , string , double , int& , int& ,
+            RPFdataSet& , vector<double>& , vector<double>& );
+
+void Get_X_Y_Correlation(long , long , vector<double>& , vector<double>& ,
+	vector<double>& , double& , double& , double& , double& ,double& );
 
 void VB_printVector(string infoVector, vector <double>& vB){
 	long j=0;
@@ -146,7 +156,7 @@ void VB_printVector(string infoVector, vector <double>& vB){
 		std::cout<<std::endl;
 }
 
-
+//===============MAIN
 int main(){
 	string strDataSetFileName=
 	"C:\\Users\\MikeP\\My Documents\\CPP_Program_Languadge\\CodeBlockCpp\\ZI_30000_FA0.txt";
@@ -186,6 +196,7 @@ int main(){
     Hes_Pos_ML_Refine_zFactors(zFP_Refinementr_Log, jSet, pAsite, pNumber, jGeneStartShift,DS,
         tML_long,tML_Sigma_long,wML_long, zFP_long, zFP_Sigma_long, wFP_long);
 
+
     // more refinement?
     int kIter=0, kEnd=0;
     do{
@@ -210,6 +221,17 @@ int main(){
     Print_vFP_Full_As_MatrixB(zFP_OutputFile,strText, strNorm, iPrint_rpfOmega,
         iPrint_Col_Corr, pC_First, pC_Last, DS, jSet,
 		zFP_long, zFP_Sigma_long, wFP_long);
+
+	// print R2 gene statistics
+    string R2_OutPutFile=
+    "C:\\Users\\MikeP\\My Documents\\CPP_Program_Languadge\\CodeBlockCpp\\R2_OutPut.txt";
+        string strMode="";
+        string strMark="MARK";
+        string strWeight="WEIGHTED";
+        string strInfo="R2 Output using zHAT";
+        double tol_R2=0.1;
+    Report_R2_zFP_Statistics(R2_OutPutFile, jSet, strMode,  strMark,strWeight, strInfo,
+                             tol_R2, pC_First, pC_Last, DS,  zFP_long, zFP_Sigma_long);
     return 0;
 }
 
@@ -224,6 +246,7 @@ void Get_Sequence_RPFs(int nRPFadd, const string strDataSetFileName, RPFdataSet&
 	// NOTE: we use positive indexes in long vectors: index "0" is ignored
 	// NOTE: to this end the size of vectors is increased by one
 	//       the matrix dimentions are also increased by one
+	// Implemented by Michael Pavlov
 
 	long mRow;
 	string strCodon, strCodonORF, strAA;
@@ -261,10 +284,10 @@ void Get_Sequence_RPFs(int nRPFadd, const string strDataSetFileName, RPFdataSet&
 	mRow=1;
 	nFus=1;
   std::ifstream dataInput(strDataSetFileName); // define the input object
-
-    if(dataInput.is_open()){ //Fill lines from the file into string array
+    //Note line "0" in the input file corresponds to strLinesInFile vector index "1"
+    if(dataInput.is_open()){ //Fill lines from the file into string vector
         while(getline(dataInput,strLine)){
-           strLinesInFile.push_back(strLine); // constract the vect0r of string-lines
+           strLinesInFile.push_back(strLine); // construct the vector of file-lines
            mRow++;
         }
     }
@@ -274,7 +297,7 @@ void Get_Sequence_RPFs(int nRPFadd, const string strDataSetFileName, RPFdataSet&
 		int mRow1=mRow+1;
 
   //Parse the header lines
-  string strField, strField1;
+  string strField, strField1, strField2;
 	long dataSetRPF_Total;
 	double setDoublingTime;
 	std::stringstream ssLine; // assigne the streaming/parcing buffer
@@ -284,18 +307,26 @@ void Get_Sequence_RPFs(int nRPFadd, const string strDataSetFileName, RPFdataSet&
 	ssLine>>strField>>strField1; // Parse the first header line
   if(strField == "dataSet") {// data set Field is found
 		DS.dataSetName =strField1;
+
 		// second line
 		ssLine.clear();ssLine.str("");
 		ssLine<<strLinesInFile.at(2);
 		ssLine>>strField>>dataSetRPF_Total;
 		DS.dataSubSet_RPF_Total.push_back(dataSetRPF_Total);
+
 		// third line
 		ssLine.clear();ssLine.str("");
 		ssLine<<strLinesInFile.at(3);
 		ssLine>>strField>>setDoublingTime;
 		DS.doublingTime.push_back(setDoublingTime);
 
-	// Initialize jGene Arrays puting  0 at position zero
+		// fouth line
+		ssLine.clear();ssLine.str("");
+		ssLine<<strLinesInFile.at(4);
+		ssLine>>strField>>strField1>>strField2;
+		DS.dataSubSetName.push_back(strField2);
+
+	// Initialize jGene Arrays putting  0 at position zero
 	vector<long> geneStart(1,0);
 	vector<long> geneEnd(1,0);
 	vector<string> geneName(1, "   ");
@@ -567,6 +598,7 @@ void Get_Sequence_RPFs(int nRPFadd, const string strDataSetFileName, RPFdataSet&
 	// vArray: input array
 	// iOrderArray: output/ j= iOrderArray(i)  j-rearanges the i-order of vArray
 	// NOTE: index "0" is ignored here!
+	// Implemented by Michael Pavlov
 
 	long i, k;
 	long mL1 = vArray.size();
@@ -612,6 +644,7 @@ void Get_Sequence_RPFs(int nRPFadd, const string strDataSetFileName, RPFdataSet&
 //
 // strOutPutFile: 	path to the output file and its name
 // DS: 				dataset structure
+// Implemented by Michael Pavlov
 
 long i , j , k , iCodon, nCodonTotal, geneLength;
 int jGene;
@@ -667,17 +700,17 @@ int jGene;
                 ";  Total RPFs in Data Set= " << totalRPF<< std::endl;
     dataOutput<<ssLine.str();
     std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
-    ssLine <<"Codon "<<"Rank   "<<"#Codons "<<"Fraction  "<< "codUsage  "<<"Fraction  "<<"RPF/Codon  "
-	<< "Sigm_RPFs"<<  "Codon_Identity"<<std::endl;
+    ssLine <<"Codon ; Rank  ; #Codons ; Fraction ; codUsage ; Fraction ; RPF/Codon ; "
+	<< "Sigm_RPFs ; Codon_Identity"<<std::endl;
 	dataOutput<<ssLine.str();
 	std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
     for (k = 1; k <= cNumber; k++) {
-        ssLine <<DS.geneCodeTableOrdered.at(k).substr(0,6)<<"  "
-        <<k<<"  "<<nCodCount.at(k)
-        <<"  " << (1000 * nCodCount.at(k) / nCodonTotal)<<"  "
-        <<DS.codUsage.at(k)<<"  "<<(1000 * DS.codUsage.at(k))<<"  "
-        <<codRPFsAver.at(k)<<"   "<< codRPFsSigma.at(k)<<"   "
+        ssLine <<DS.geneCodeTableOrdered.at(k).substr(0,6)<<" ; "
+        <<k<<" ; "<<nCodCount.at(k)
+        <<" ; " << (1000 * nCodCount.at(k) / nCodonTotal)<<" ; "
+        <<DS.codUsage.at(k)<<" ; "<<(1000 * DS.codUsage.at(k))<<" ; "
+        <<codRPFsAver.at(k)<<" ; "<< codRPFsSigma.at(k)<<" ;  "
         <<DS.geneCodeTableOrdered.at(k)<<std::endl;
       dataOutput<<ssLine.str();
       std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
@@ -694,15 +727,16 @@ int jGene;
     geneDataOutput<<ssLine.str();
 	std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
-	ssLine << "Gene#  "<<"Gene_Name  "<< "Starts  "<< "#AAs  "<<
-	"Total_RPF  "<< "RPF/ORF_Codon"<<std::endl;
+	ssLine << "Gene# ; Gene_Name ; Starts ; #AAs  ; "<<
+	"Total_RPF ; RPF/ORF_Codon"<<std::endl;
 	geneDataOutput<<ssLine.str();
 	std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
     for (jGene = 1; jGene <= jTot; jGene++) {
             geneLength = DS.geneEnd.at(jGene) - DS.geneStart.at(jGene) + 1;
-        ssLine <<jGene<<"  "<< DS.geneName.at(jGene)<< "  "<<DS.geneStart.at(jGene)<<"  "
-        <<geneLength<<"   " <<DS.geneRPFtotal[jSet][jGene]<< "   "
+        ssLine <<jGene<<" ; "<< DS.geneName.at(jGene)<< " ; "
+        <<DS.geneStart.at(jGene)<<" ; "
+        <<geneLength<<" ;  " <<DS.geneRPFtotal[jSet][jGene]<< " ; "
 		<<(DS.geneRPFtotal[jSet][jGene] / geneLength)<<std::endl;
       geneDataOutput<<ssLine.str();
 	  std::cout<<ssLine.str(); ssLine.clear(); ssLine.str(""); //do output and clear buffer
@@ -716,7 +750,7 @@ int jGene;
     geneDataOutput<<ssLine.str();
 	std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
-    ssLine<< "Rank  "<< "Gene  " << "#AAs  "<< "Total_RPF  " << "RPF/ORF_Codon" << std::endl;
+    ssLine<< "Rank ; Gene ; #AAs ; Total_RPF ; RPF/ORF_Codon" << std::endl;
     geneDataOutput<<ssLine.str();
 	std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
@@ -737,6 +771,7 @@ void Get_ML_zHAT(const string strReportFile,long jSet, long pAsite , long pNumbe
     RPFdataSet& DS, vector<double>& tML_long, vector<double>& tML_Sigma_long, vector<double>& wML_long) {
 	//
 	// Calculates ML Fingerprints
+	// Implemented by Michael Pavlov
 
 	int iPrint = 1;
 
@@ -1046,9 +1081,7 @@ void Get_ML_zHAT(const string strReportFile,long jSet, long pAsite , long pNumbe
 	int nPosCodActive1;
 			pShift = 0;
         MatrixDouble mHM, mHM1, mHS;
-        vector<long> vPA;
         int iFlagInvert;
-        MatrixDouble mLA, mUA;
         double det_mHS;
         vector<double> diagHM1_Full(cNumber1,0.0);
 	for (iPos = 1; iPos <= pNumber; iPos++) {
@@ -1125,11 +1158,7 @@ void Get_ML_zHAT(const string strReportFile,long jSet, long pAsite , long pNumbe
             }
 
         // invert the hessian the curtailed Hessian
-            VB_FactorLUPA(0, mHS, vPA, mLA, mUA,  det_mHS);
-            VB_InvertLUPA(iFlagInvert, mLA, mUA, vPA, mHM1);
-
-        //Call Print_LUP_Factors(mH, vP, mL, mU)
-
+            VB_LUPA_Invert(1, mHS,  mHM1);
 
         // Record the diagonal of the inverted Hessian
                 iA = 0;
@@ -1177,268 +1206,6 @@ void Get_ML_zHAT(const string strReportFile,long jSet, long pAsite , long pNumbe
 	}
 }
 
-
-// ============================================================
-void VB_FactorLUPA (int iP, const MatrixDouble& mA, vector<long>& vP,
-                        MatrixDouble& mL, MatrixDouble& mU, double& detA){
-	//
-	// Factorise the matrix as A*P=L*U where L is low and U is upper triangular
-	// And keep the row rearrangements in the A matrix as a permutation matrix
-	// or rather a permiutation vector P (vP)
-	// Note that the algorithm with permutations is described in Sprang
-	//
-	// iP:  input,  iP=0 then skip pivoting; iP>0 then do pivoting
-	// mA:  input,  mA is the matrix to be LUP factorized
-	// vP:  output, vP recods pivotiing process
-	// mL:  output, mL is a low triangular with 1-s on the diagonal
-	// mU:  output, mU is an upper triangular
-	//
-	long i , j, k , jR , iFlag, j1;
-	long iRow, jCol, mRow, nCol, mRow1, nCol1;
-    mRow1 = mA.size();
-	nCol1 = mA[1].size();
-	double	zTol= 0.0000000000001;
-        mRow=mRow1-1;
-        nCol=nCol1-1;
-     mL.clear(); mU.clear(); vP.clear(); // clean BEFORE RE-SIZING
-        mL.resize(mRow1,vector<double>(nCol1,0.0));
-        mU.resize(mRow1,vector<double>(nCol1,0.0));
-        vP.resize(mRow1,0);
-	if(!(mRow==nCol)){
-        std::cout<< "SolveLUPA problem: mRow="<<mRow
-        <<"; nCol=" <<nCol<<std::endl;
-	}
-	//std::cout<< "mRow=" << mRow<<" ; nCol="<<nCol<<std::endl;
-
-   // Fill mU and vP
-	for (i = 1; i <= mRow; i++) {
-		for (j = 1; j <= nCol; j++) {
-			mU[i][j] = mA[i][j];
-		}
-			vP.at(i) = i;
-	}
-
-	// main factorization cycle
-	double rRow, rRowMax, rRowMaxAbs, rRowAbs, mLij, mUjj;
-	long iRowMax ;
-
-	detA=1; //intial value for the determinant of square sub-matrix
-
-	for (j = 1; j <= nCol; j++) {
-		//at step j find the largest pivot in column j below j
-			iRowMax = j;
-			rRowMax = mU[j][j];
-			rRowMaxAbs = std::abs(rRowMax);
-		for (i = 1; i <= mRow; i++) {
-				rRowAbs = std::abs(mU[i][j]);
-			if (rRowMaxAbs < rRowAbs) {// a larger pivot is found
-				rRowMaxAbs = rRowAbs;
-				iRowMax = i;
-			}
-		}
-		if (iP == 0) { iRowMax = j;} // Run without pivoting
-		if (iRowMax > j) { // Swap  rows *iRowMax* and *j* in mL+mR
-				// record the row swap in A in the vector vP
-				jR = vP.at(j);
-				vP.at(j) = vP.at(iRowMax);
-				vP.at(iRowMax) = jR; // record the swap
-			// actually swap the rows j and iRowMax (both in L and in the remaining of A)
-			for (k = 1; k <= nCol; k++) {
-				rRow = mU[j][k];
-				mU[j][k] = mU[iRowMax][k];
-				mU[iRowMax][k] = rRow;
-			}
-		}
-		// calculate  new column j of a low triangular mL matrix
-		// the k element of column j mLkj contains the elimination coefficient
-		// for subtracting row j from from row k creating a zero subcolumn in
-		// modified A
-			mUjj = mU[j][j]; // get the current pivot
-			detA=detA*mUjj;  // refresh detA value
-			j1 = j + 1;
-		if(std::abs(mUjj) >= zTol) { // run the elimination
-				for (i = j1; i <= nCol; i++) {
-						mLij = mU[i][j] / mUjj; // the new component of the column mL
-						mU[i][j] = mLij; // save elimination coefficients in a low part of mU
-				  // subtract row j multiplied by Lij from row i of modified A
-					for (k = j1; k <= mRow; k++) {
-						mU[i][k] = mU[i][k] - mLij * mU[j][k];
-					}
-				}
-		}
-		if(std::abs(mUjj) < zTol) {//put real zeroes to stress that mUjj=0 and skip the elimination step
-					iFlag = 2;  // note the matrix mA singularity
-				for (i = j; i<=nCol; i++) {
-					mU[i][j] = 0;
-				}
-        }
-	}
-	// separate mU into mL and mR=new mU matrices
-	if (nCol <= mRow) {
-		for (j = 1; j <= nCol; j++) {
-			for (i = j + 1; i<= mRow; i++) {
-				mL[i][j] = mU[i][j];
-				mU[i][j] = 0;
-			}
-				mL[j][j] = 1;
-		}
-	}
-	  else {
-			mL[1][1] = 0;
-		for (i = 2; i <= mRow; i++) {
-			for (j = 1; j<= i - 1; j++) {
-				mL[i][j] = mU[i][j];
-				mU[i][j] = 0;
-			}
-			for (j = i; j <=  nCol; j++) {
-				mL[i][j] = 0;
-			}
-				mL[i][i] = 1;
-		}
-	  }
-}
-
-//=============================================================================
-void VB_SolveLUPA(int& iFlag, const MatrixDouble& mL, const MatrixDouble& mU,
-            const vector<long>& vP,vector<double>& vX, const vector<double>& vB){
-	//
-	// Given equation A*x=b and P*A=L*U factorization
-	// the sub solves equation L*U*x=PM1*b
-	//  by first  solving  L*v=PM1*b by forward substitutions
-	//  and then U*x=v by back-substitutions
-	//
-	//  iFlag:  output, indicate problems if not "0" upon return
-	//  mL:     input, low triangular from mA LUPA factorization sub
-	//  mU:     input, upper triangular from mA LUPA factorization sub
-	//  vP:     input, row permutation vectir from mA LUPA factorization sub
-	//  vX:     output, solution vector
-	//  vB:     input, the right side vector
-	//
-	long i , j , k , jP =0;
-	double vj, zj, mUjj;
-	double zTol= 0.000000000001;
-	//
-    long iDim1 = mL.size();
-    long jDim1 = mL[1].size();
-	long iDim =iDim1-1;
-	long jDim =jDim1-1;
-	if(!(iDim==jDim)){
-        std::cout<< "SolveLUPA problem: iDim="<<iDim
-        <<"; jDim" <<jDim<<std::endl;
-	}
-
-	vector<double> v(jDim1,0.0);
-	vector<double> z(jDim1,0.0);
-	vector<double> W(jDim1,0.0);
-	vX.clear();
-	vX.resize(jDim1,0.0);
-
-	// permutate vb components of the right side
-	// check also for j/jP-boundaries violations
-    for (j = 1;j <= jDim; j++){
-        jP = vP.at(j);
-        W.at(j) = vB.at(jP);
-    }
-
-    // get L*v=w solution by forward substitutions
-    for (j = 1; j <= jDim; j++) {
-            vj = 0;
-		if (std::abs(W[j]) > 0) {vj = W[j] / mL[j][j];}
-				v[j] = vj;
-			if (std::abs(vj) > 0) { // update current right side
-				for (i = j; i <= jDim; i++){
-					W[i] = W[i] - vj * mL[i][j];
-				}
-			}
-	}
-
-    //then solve mU*z=v by backsubstitutions
-    for (j = jDim; j>= 1; j=j-1) {
-            mUjj = mU[j][j];
-            zj = 8;
-        if (std::abs(mUjj) > zTol) {
-			zj = v[j] / mUjj;
-			}
-		else{iFlag=2;}
-            z[j] = zj;
-            vX[j] = zj;
-        for (i = 1; i <= j; i++){
-            v[i] = v[i] - zj * mU[i][j];
-        }
-	}
-}
-
-
-// ============================================================
-void VB_InvertLUPA(int& iFlag, MatrixDouble& mL, MatrixDouble& mU,
-                                    vector<long>& vP, MatrixDouble& mAM1){
-	//
-	// Inverts matrix A that has been LUPA factorised as P*A=L*U
-	// it does it by solving n-equations with ek-right sides
-	// i.e it solves A*AM1(k)=e(k) where AM1(k) is a k-column of A inverse
-	//
-	//  iFlag:  output, indicate problems if not "0" upon return
-	//  mL:     input, low triangular from mA LUPA factorization sub
-	//  mU:     input, upper triangular from mA LUPA factorization sub
-	//  vP:     input, row permutation vectir from mA LUPA factorization sub
-	//  mAM1:   output, inverted matrix
-	//
-	long i =0, j =0, k =0, jP =0, kP =0;
-	double vj =0.0, zj =0.0, mUjj=0.0;
-	double zTol= 0.000000001;
-	//
-		long iDim1 = mL.size();
-		long jDim1 = mL[1].size();
-		long iDim =iDim1-1;
-		long jDim =jDim1-1;
-	vector<double> v(jDim1,0.0);
-	vector<double> z(jDim1,0.0);
-	vector<double> W(jDim1,0.0);
-	//
-	//prepare intermediate vectors
-	//
-	for(k = 1; k <= jDim; k++) {
-		for(j = 1; j <= jDim; j++){
-			v.at(j) = 0;
-			z.at(j) = 0;
-			W.at(j) = 0;
-			jP = vP.at(j); //permutate e(k) components
-		  if (jP == k) {kP = k;}
-		  mAM1[j][k] = 0;
-		}
-			W.at(kP) = 1.0;
-
-		// Solve L*v=W for v by forward substitutions
-		for(j = kP; j <= jDim; j++){
-				vj = 0;
-			if (std::abs(W[j]) > 0) {
-				vj = W[j] / mL[j][j];
-			}
-				v[j] = vj;
-			if (std::abs(vj) > 0) {
-				for (i = j; i <= jDim; i++) {
-					W[i] = W[i] - vj * mL[i][j];
-				}
-			}
-		}
-
-		//then solve mU*z=v by back-substitutions
-		for (j = jDim; j >= 1 ;j=j-1) {
-				mUjj = mU[j][j];
-				zj = 8;
-			if (std::abs(mUjj) > zTol) {
-				zj = v[j] / mUjj;
-			}
-			else{iFlag=2;}
-				z[j] = zj;
-				mAM1[j][k] = zj;
-			for(i = 1; i<= j; i++){
-				v[i] = v[i] - zj * mU[i][j];
-			}
-		}
-	}
-}
-
 // ====================================================================================
 //
 void Get_Log_Likelihood(const long& jSet, RPFdataSet& DS, MatrixDouble& zPC_Matrix,
@@ -1458,6 +1225,8 @@ void Get_Log_Likelihood(const long& jSet, RPFdataSet& DS, MatrixDouble& zPC_Matr
   //  tLhd_Gene : 	output, Likelihood of the Model for each gene
   //  tLhd_Gene_UB:		output, Upper Bound of Likelihood for each gene
   //  tLhd_Total_UB:	output, Upper Bound of Likelihood for the data subset
+  //
+  // Implemented by Michael Pavlov
   //
 	long jGene, iPos, cNumber, pNumber, pAsite;
 	long  jStart, jEnd, jGeneStartShift, jTot, mRow, indCodon;
@@ -1538,6 +1307,8 @@ void Get_Log_Likelihood_Only(const long& jSet, const RPFdataSet& DS, const Matri
   //  zFP:    input, the Matrix of zPC parameters of our model
   //  tLhd_Total: 	output, the main output: likelihood of the Model for the data subset
   //
+  // Implemented by Michael Pavlov
+  //
 
 	long jGene, iPos, cNumber, pNumber, pAsite;
 	long jStart, jEnd, jGeneStartShift, jTot, mRow, indCodon;
@@ -1606,6 +1377,8 @@ void RefineStepSize_New(const int& jSet, const RPFdataSet& DS, const MatrixDoubl
 	//  tLhd_Total: 	output, the main output: likelihood of the Model for the data subset
 	//  stepSize:   main output, the step size that maximizes the likelihood along  vDir
 	//  zShift_Long:   main input, the suggested direction of zFP shift
+	//
+	// Implemented by Michael Pavlov
 
 	// Standard block
 	int i, j, k, iStepSize;
@@ -1672,7 +1445,7 @@ void RefineStepSize_New(const int& jSet, const RPFdataSet& DS, const MatrixDoubl
        Get_Log_Likelihood_Only(jSet, DS, zFP_New, tLhd_Total);
            stepSizeSequence.at(nStepMax) = stepSizeCurr; // maximal allowed step size
            fValueSequence.at(nStepMax) = tLhd_Total; // the corresponding Likelihood
-       if(tLhd_Total > tLhd_Total_Max) { // got better then a zero step
+       if(tLhd_Total > tLhd_Total_Max) { // got better LH then with step zero
             iFlag = iFlag + 1;
             tLhd_Total_Max = tLhd_Total;
         }
@@ -1699,11 +1472,11 @@ void RefineStepSize_New(const int& jSet, const RPFdataSet& DS, const MatrixDoubl
 			tLhd_Total_Max = tLhd_Total;
         }
          d21 = fValueSequence.at(iStepSize+1) - fValueSequence.at(iStepSize);
-        if ( (d21>=dTol)) { // function declines after the maximum?
+        if (iFlag > 0 && tLhd_Total < tLhd_Total_Max) { // function declines after the maximum?
               break; // exit iStepSize loop
 		}
 	}
-        //if(iStepLast > nStepMax - 2){
+
             d21 = fValueSequence.at(nStepMax) - fValueSequence.at(nStepMax - 1);
             if (d21 >= dTol) {
                 stepSize = stepSizeSequence.at(nStepMax);
@@ -1711,13 +1484,13 @@ void RefineStepSize_New(const int& jSet, const RPFdataSet& DS, const MatrixDoubl
                    stepSize = stepSizeSequence.at(nStepMax-1);
                 }
               return;
-           // }
+			}
 
-           // if (std::abs(d21) < dTol) {
-           //     stepSize = stepSizeSequence.at(nStepMax - 1);
-           //     return;
-           // }
-        }
+           if (std::abs(d21) < dTol) {
+               stepSize = stepSizeSequence.at(nStepMax - 1);
+                return;
+           }
+
         // Use 3-point bracket, v2 is max
 
         y1 = stepSizeSequence.at(iStepLast);
@@ -1787,6 +1560,7 @@ void Hes_Pos_ML_Refine_zFactors(const string strReportFilePath, long jSet, long 
 
 	// Refines z-Factors using Position-Diagonal Hessian Approximation
 	// by Marquardt-Like approach
+	// Implemented by Michael Pavlov
 
 	int iPrint = 1;
 
@@ -1818,7 +1592,7 @@ void Hes_Pos_ML_Refine_zFactors(const string strReportFilePath, long jSet, long 
 	long jStart =0, jEnd =0;
 
 	int jGene, iPos , nPos, nPos1;
-	double tModel_kA=0.0,  dRPF_kA =0.0;
+	double tModel_kA=0.0;
 
 
 	int  indCodon, iCod, indCod, iC, nCodon_Elong;
@@ -1881,7 +1655,7 @@ void Hes_Pos_ML_Refine_zFactors(const string strReportFilePath, long jSet, long 
 
 
 	int iFlagInvert;
-	double det_mH_SC, det_Hes;
+	double  det_Hes;
 	vector<double> diag_mH_PS;
 	// Load current z-Factors (or  ML Fingerprints) and Transform to matrixes
         k = 0;
@@ -1925,12 +1699,7 @@ void Hes_Pos_ML_Refine_zFactors(const string strReportFilePath, long jSet, long 
 	vector<double> vDir_Short(nActiveShort1,0.0);
 	vector<double> diag_mH_Short(nActiveShort1,0.0);
 	vector<double> grad_PS, vDir_PS;
-	MatrixDouble mH_PS, mLH, mUH;
-	vector<long> vPH;
-	MatrixDouble mH_SC;
-	vector<double> grad_SC;
-	double diag_iA;
-
+	MatrixDouble mH_PS;
 
 	// Non-singular Hessian
 	MatrixDouble mH_Short(nActiveShort1, vector<double>(nActiveShort1,0.0));
@@ -2012,7 +1781,18 @@ void Hes_Pos_ML_Refine_zFactors(const string strReportFilePath, long jSet, long 
         ref_Log<<ssLine.str();
         std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
-        //std::cout<< "SubSet: "<< DS.dataSubSetName[jSet]<<std::endl;
+        ssLine<< "subSet_Name= " << DS.dataSubSetName.at(jSet)<<std::endl;
+        ref_Log<<ssLine.str();
+        std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
+
+        ssLine<< "RPF_Total= " << DS.dataSubSet_RPF_Total.at(jSet)<<std::endl;
+        ref_Log<<ssLine.str();
+        std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
+
+        ssLine<< "Doubling_Time= " << DS.doublingTime.at(jSet)<<std::endl;
+        ref_Log<<ssLine.str();
+        std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
+
         ssLine<< "pAsite= "<< DS.pAsite << " ;pNumber= " << DS.pNumber<<std::endl;
         ref_Log<<ssLine.str();
         std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
@@ -2231,27 +2011,11 @@ void Hes_Pos_ML_Refine_zFactors(const string strReportFilePath, long jSet, long 
             }
 		}
 
-    // Rescale the equation "mH_PS*vDir_PS=grad_PS" for vDir by multiplying both sides
-    //  by matrix of inverse mH_PS diagonal
-        mH_SC.clear(); grad_SC.clear();
-		mH_SC.resize(nPos1, vector<double>(nPos1,0.0));
-		grad_SC.resize(nPos1,0.0);
 		diag_mH_PS.clear();
 		diag_mH_PS.resize(nPos1,0.0);
 
-
-     for (iA = 1;  iA <= nPos; iA++){
-            diag_iA = mH_PS[iA][iA];
-        diag_mH_PS.at(iA)=diag_iA;
-            grad_SC.at(iA) = grad_PS.at(iA) / diag_iA;
-        for (jA = 1; jA <= nPos; jA++){
-            mH_SC[iA][jA] = mH_PS[iA][jA] / diag_iA;
-        }
-     }
-
-		// Solve Equations for the current context position iPos:
 		// Solve  (mH_PS+(alfa-1)*diag_mH_PS)*vDir=gradActive
-            VB_LUPA_Solve(1,  mH_SC, vDir_PS, grad_SC);
+            VB_Gauss_Solve(1,  mH_PS, vDir_PS, grad_PS);
 
 		// restore gradActive short and vDir_Short
 		// Change  vDir_Short into the oposite, assent direction
@@ -2359,7 +2123,7 @@ void Hes_Pos_ML_Refine_zFactors(const string strReportFilePath, long jSet, long 
         ref_Log<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
         // to console
-		ssLine<< Iter<< "; " << tLhd_Total<< "; " << gradActiveNorm << "; "
+		ssLine<< Iter<< "; " << tLhd_Total<< "; " << gradActive_Norm << "; "
 			<< std::sqrt(zDiff2)<< "; " << stepSize <<"; "
 			<< cos_vDir_Grad << "; "<< cos_vDirOld_GradNew << "; "<< std::endl;
         std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
@@ -2473,11 +2237,8 @@ void Hes_Pos_ML_Refine_zFactors(const string strReportFilePath, long jSet, long 
 				}
 			}
 
-
 			//invert the curtailed position Hessian
-			VB_FactorLUPA(1, mH_PS, vPH, mLH, mUH, det_mH_SC);
-				//Call Print_LUP_Factors(mH_PS, vP, mL, mU)
-			VB_InvertLUPA(iFlagInvert, mLH, mUH, vPH, mHM1);
+			VB_LUPA_Invert(1, mH_PS,  mHM1);
 
 				iA = 0;
 			for(indCodon = 1;  indCodon <= cNumber; indCodon++) {
@@ -2548,6 +2309,8 @@ void Print_vFP_Full_As_MatrixB(const string strPrintOutputPath, string strText, 
 	//  vFP_Signma_Full:   	Errors zFP coefficients compresed to vector
 	//  wFP_Full:   		Frequency of codon jCod at local position iPos as
 	//							seen by the translating ribosome
+	// Implemented by Michael Pavlov
+	//
 
 	long i, j, k;
 	long pNumber, pAsite, nCodon, nLength;
@@ -2638,18 +2401,18 @@ void Print_vFP_Full_As_MatrixB(const string strPrintOutputPath, string strText, 
 	std::stringstream ssLine;
 	ssLine.clear(); ssLine.str("");  //Clear the String Stream Buffer
 
-    //ssLine << "DataSet: " << DS.dataSetName << "; #_Genes=" << jTot << "; subSet#" << jSet
-		//<< "; subSetName:" << DS.dataSubSetName.at(jSet) << "; FA_conc=" << DS.concFA.at(jSet)
-		//<< "; dbl_Time=" << DS.doublingTime.at(jSet)
-		//<< "; RPF_Tot=" << DS.dataSubSet_RPF_Total.at(jSet) << std::endl;
-	//zFP_Record<<ssLine.str();
+    ssLine << "DataSet: ;" << DS.dataSetName << " ; #_Genes= ;" << jTot << "; subSet# ;" << jSet
+		<< "; subSetName: ;" << DS.dataSubSetName.at(jSet)
+		<< "; dbl_Time= ;" << DS.doublingTime.at(jSet)
+		<< "; RPF_Tot= ;" << DS.dataSubSet_RPF_Total.at(jSet) << std::endl;
+	zFP_Record<<ssLine.str();
 	std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
     ssLine << strNorm << " :" << strText << strWeighted<< std::endl; // the title
 	zFP_Record<<ssLine.str();
 	std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
-		ssLine << "Codon_Index: " << "; " << "; ";
+    ssLine << "Codon_Index: " << "; " << "; ";
 	for (j = 1; j <= nCodon; j++) {ssLine << j << "; ";}
 		ssLine<< std::endl;
 	  zFP_Record<<ssLine.str();
@@ -2779,20 +2542,594 @@ void Print_vFP_Full_As_MatrixB(const string strPrintOutputPath, string strText, 
     }
 }
 
+// ==============================================================================
+void Get_PCorr_Rows_mA_New(long& jCol_Start, long& jCol_End, const MatrixDouble& mA,
+								const MatrixDouble& wA, vector<double>& mA_RowAver,
+									vector<double>& mA_RowSigma, MatrixDouble& mPC) {
+	//
+	// It Gets Pearson correlation between rows of matrix A
+	//
+	// Implemented by Michael Pavlov
+	//
+	long i, j, k,  mRow, nCol, mRow1, nCol1;
+		mRow1 = mA.size();
+		nCol1 = mA[1].size();
+		mRow=mRow1-1;
+		nCol=nCol1-1;
+	if (jCol_Start == 0) {jCol_Start = 1;}
+	if (jCol_End == 0) {jCol_End = nCol;}
+
+		mA_RowAver.clear(); mA_RowSigma.clear(); mPC.clear();
+		mA_RowAver.resize(mRow1,0.0); mA_RowSigma.resize(mRow1,0.0);
+		mPC.resize(mRow1, vector<double>(mRow1,0.0));
+		double rowAver, rowAver2, wRow;
+
+	// get row averages and their sigmas for matrix mA
+		for(i = 1; i <= mRow; i++) {
+				rowAver = 0.0;
+				rowAver2 = 0.0;
+				wRow = 0.0;
+			for(j = jCol_Start; j <= jCol_End; j++) {
+				wRow = wRow + wA[i][j]; 			//weighted sum for row iRow
+				rowAver = rowAver + mA[i][j] * wA[i][j];
+				rowAver2 = rowAver2 + mA[i][j] * mA[i][j] * wA[i][j];
+			}
+				mA_RowAver.at(i) = rowAver / wRow; //row average
+			mA_RowSigma.at(i) = rowAver2 / wRow;
+			mA_RowSigma.at(i) =
+				std::sqrt(std::abs(mA_RowSigma.at(i) - mA_RowAver.at(i) * mA_RowAver.at(i)));
+		}
+	//
+	// calculate row  correlations between  matrices mA and mB
+	   double pCorr, wGT;
+	for(i = 1; i <= mRow; i++) {
+		for(k = i; k<= mRow; k++) {
+				pCorr = 0;
+				wRow = 0;
+			for(j = jCol_Start; j <= jCol_End; j++) {
+				wGT = std::sqrt(wA[i][j] * wA[k][j]); //compozed weight
+				wRow = wRow + wGT;
+				pCorr = pCorr +
+					wGT * (mA[i][j] - mA_RowAver.at(i)) * (mA[k][j]  - mA_RowAver.at(k));
+			}
+					mPC[i][k] = pCorr / wRow;
+				if(std::abs(mA_RowSigma.at(i)) > 0 && std::abs(mA_RowSigma.at(k)) > 0) {
+					mPC[i][k] = mPC[i][k] / (mA_RowSigma.at(i) * mA_RowSigma.at(k));
+				}
+					mPC[k][i] = mPC[i][k];
+		}
+	}
+}
+
+// =============================================================================
+void Get_PCorr_Cols_mA_New(long iRow_Start, long iRow_End, const MatrixDouble& mA,
+		const MatrixDouble& wA, vector<double>& mA_ColAver,
+								vector<double>& mA_ColSigma, MatrixDouble& mPC) {
+	//
+	// It Gets Pearson correlation between rows of matrix A
+	//
+	// Implemented by Michael Pavlov
+	//
+	long i, j, k, iRow, jCol, mRow, nCol, mRow1, nCol1;
+    mRow1 = mA.size();
+    nCol1 = mA[1].size();
+    mRow=mRow1-1;
+    nCol=nCol1-1;
+		mA_ColAver.clear(); mA_ColSigma.clear(); mPC.clear();
+		mA_ColAver.resize(nCol1,0.0); mA_ColSigma.resize(nCol1,0.0);
+		mPC.resize(nCol1, vector<double>(nCol1,0.0));
+	double colAver, colAver2, wCol;
+
+	//get row averages and their sigmas for matrix mA
+    for(j = 1; j <= nCol; j++) {
+            colAver = 0;
+            colAver2 = 0;
+            wCol = 0;
+        for(i = iRow_Start; i <= iRow_End; i++) {
+            wCol = wCol + wA[i][j]; //Sum of weights
+            colAver = colAver + mA[i][j] * wA[i][j];
+            colAver2 = colAver2 + mA[i][j] * mA[i][j] * wA[i][j];
+        }
+            mA_ColAver.at(j) = 0;
+            mA_ColSigma.at(j) = 0;
+        if(wCol > 0) {
+            mA_ColAver.at(j) = colAver / wCol; // codon averaged FP for position iPos
+            mA_ColSigma.at(j) = colAver2 / wCol;  //codon averaged FP2 for position iPos
+            mA_ColSigma.at(j) =
+			   std::sqrt(std::abs(mA_ColSigma.at(j) - mA_ColAver.at(j) * mA_ColAver.at(j)));
+        }
+    }
+
+	//calculate  matrices mA column correlations
+	double pCorr, wGT;
+	for(j = 1; j <= nCol; j++) {
+		for(k = j; k <= nCol; k++) {
+				pCorr = 0;
+				wCol = 0;
+			for (i = iRow_Start; i <= iRow_End; i++) {
+				wGT = std::sqrt(wA[i][j] * wA[i][k]); // compozed weight
+				wCol = wCol + wGT;
+				pCorr = pCorr +
+				  wGT * (mA[i][j] - mA_ColAver.at(j)) * (mA[i][k] - mA_ColAver.at(k));
+			}
+				mPC[j][k] = 0;
+			if((wCol > 0) && (std::abs(pCorr) > 0)) {
+				mPC[j][k] = pCorr / wCol;
+				mPC[j][k] = mPC[j][k] / (mA_ColSigma.at(j) * mA_ColSigma.at(k));
+			}
+				mPC[k][j] = mPC[j][k];
+		}
+	}
+}
+
+// =============================================================================================
+void Report_R2_zFP_Statistics(string strOutPutFile, long jSet, string strMode, string strMark,
+			string strWeight, string strInfo, double tol_R2, int& pC_First, int& pC_Last,
+            RPFdataSet& DS, vector<double>& zFP_long, vector<double>& zFP_Sigma_long) {
+	//
+	// Prints-out Exper-Model Correlaion statistics for Dataset Genes
+	//
+	// Implemented by Michael Pavlov
+	//
+
+	long i, j, k, kA, indCodon, iPos, kRow, kCodon;
+	long  nExp, iFlagMode;
+	string strGeneName;
+	long cNumber, pAsite, pNumber;
+
+	long mRow, jStart, jEnd, jTot, nCodon_Elong, nCodon_Elong1, nRPF;
+	vector<double> xExperGene, yModelGene, wExperGene;
+	double R2, corrME, corrME_Pearson, yModelAver, xExperAver, sigmaYM2, sigmaXE2;
+	double tModelCodon, tModelGene;
+
+	// Likelyhood variables
+	vector<double>  geneRPFlnT;
+	double tLhd_Total, gene_RPF_ln_tModel, tLhd_Total_UB, gene_RPF_ln_RPF;
+
+	long geneRPF_Elong, jGene, nLength;
+	double tModelGenePerCodon, tExperGenePerCodon, tExperCodon, tExperGene;
+	double densGeneExper, densGeneModel;
+
+	double t_pAsite, t_Sigma, t_Sigma2;
+	double wGene, wTotal, averPRcorrW, averPRcorr;
+
+    long jTot1 = DS.geneEnd.size();
+	jTot=jTot1-1;				//number of genes in data set
+    long mRow1 = DS.iORFcodons.size();
+	mRow=mRow1-1;
+    nExp = mRow;
+    cNumber = 64; 				//Number of codons
+
+    pNumber = DS.pNumber; 		// number of positions
+    pAsite = DS.pAsite; 		//A-site position
+	long pNumber1=pNumber+1;
+	long cNumber1=cNumber+1;
+	//
+	//  Position range (from pC_First to pC_Last) to be taken into account
+	//  for Model Time Calculations
+	 if (pC_First == 0) {pC_First = 1;}
+	 if (pC_Last == 0) {pC_Last = pNumber;}
+
+	//  convert zFP long vectors into zFP matrix
+	MatrixDouble zFP(pNumber1, vector<double>(cNumber1, 0.0));
+	MatrixDouble zFP_Sigma(pNumber1, vector<double>(cNumber1, 0.0));
+	MatrixDouble zFP_Sigma2(pNumber1, vector<double>(cNumber1, 0.0));
+
+        k = 0;
+    for(i = 1; i <=  pNumber; i++) {
+        for(j = 1; j <= cNumber; j++) {
+                k = k + 1;
+            zFP[i][j] = zFP_long.at(k);
+            zFP_Sigma[i][j] = zFP_Sigma_long.at(k);
+          if(zFP_Sigma[i][j] > 0){
+            zFP_Sigma[i][j] = zFP_Sigma[i][j] / zFP[i][j];
+            zFP_Sigma2[i][j] = zFP_Sigma[i][j] * zFP_Sigma[i][j];
+          }
+        }
+    }
+	vector<double> xExper(mRow1, 0.0), yModel(mRow1, 0.0), wExper(mRow1, 0.0);
+
+
+	vector<DS_Corr> CG(jTot1);
+	vector<double> nGeneRPF(jTot1,0.0), tLhd_Gene(jTot1,0.0), tLhd_Gene_UB(jTot1,0.0);
+
+	//  calculate zFactor model times
+	vector<double> tModelGene_Elong(jTot1,0.0);
+	vector<long> nGeneCod_Elong(jTot1,0.0);
+            kRow = 0;
+            tLhd_Total = 0.0;
+            tLhd_Total_UB = 0.0;
+    for(jGene = 1; jGene <= jTot; jGene++) {
+        jStart = DS.geneStart.at(jGene) + DS.jGeneStartShift;
+        jEnd = DS.geneEnd.at(jGene);
+
+                tModelGene = 0.0;
+                tExperGene = 0.0;
+                geneRPF_Elong = 0.0;
+                gene_RPF_ln_tModel = 0.0;
+                gene_RPF_ln_RPF = 0.0;
+            nCodon_Elong = jEnd - jStart + 1;
+			nCodon_Elong1 =nCodon_Elong +1;
+		xExperGene.clear(); yModelGene.clear();wExperGene.clear();
+		xExperGene.resize(nCodon_Elong1,0.0);
+		yModelGene.resize(nCodon_Elong1,0.0);
+		wExperGene.resize(nCodon_Elong1,0.0);
+
+            kCodon = 0;
+        for(k = jStart; k <= jEnd - pNumber; k++) {
+                kA = pAsite + k - 1; 		//A-site in the original data set
+                nRPF = DS.nRPF[jSet][kA];
+
+                t_pAsite = 1; // quasi-time  with a particular codon in the A-site
+                t_Sigma2 = 0;
+            for(iPos = pC_First; iPos <= pC_Last; iPos++) {
+                indCodon = DS.iORFcodons.at(kA + iPos - pAsite);
+                t_pAsite = t_pAsite * zFP[iPos][indCodon];
+                t_Sigma2 = t_Sigma2 + zFP_Sigma2[iPos][indCodon];
+            }
+                t_Sigma = t_pAsite * std::sqrt(t_Sigma2);
+
+              kCodon = kCodon + 1; // current codon in gene arrays
+                yModelGene.at(kCodon) = t_pAsite;
+                xExperGene.at(kCodon) = nRPF;
+
+            if(t_pAsite > 0){gene_RPF_ln_tModel = gene_RPF_ln_tModel + nRPF * std::log(t_pAsite);}
+            if(nRPF > 1) {gene_RPF_ln_RPF = gene_RPF_ln_RPF + nRPF * std::log(nRPF);}
+
+              geneRPF_Elong = geneRPF_Elong + nRPF;
+              tModelGene = tModelGene + t_pAsite;
+		}
+            tLhd_Gene.at(jGene) = 0.0;
+            tLhd_Gene_UB.at(jGene) = 0.0;
+        if(kCodon > 0) {
+            if(tModelGene > 0) {
+				tLhd_Gene.at(jGene) = gene_RPF_ln_tModel -
+								geneRPF_Elong * std::log(tModelGene / kCodon);
+			}
+            if(geneRPF_Elong > 0) {
+				tLhd_Gene_UB.at(jGene) = gene_RPF_ln_RPF -
+							geneRPF_Elong * std::log(geneRPF_Elong / kCodon);
+			}
+		}
+            tLhd_Total = tLhd_Total + tLhd_Gene.at(jGene);
+            tLhd_Total_UB = tLhd_Total_UB + tLhd_Gene_UB.at(jGene);
+
+        nGeneRPF.at(jGene) = geneRPF_Elong;
+        tModelGene_Elong.at(jGene) = tModelGene;
+        nGeneCod_Elong.at(jGene) = kCodon;
+
+		// Transform to pausing scores
+            tModelGenePerCodon = 1;
+            tExperGenePerCodon = 1;
+        if(kCodon > 0){
+            tModelGenePerCodon = tModelGene / kCodon;
+            tExperGenePerCodon = geneRPF_Elong / kCodon;
+        }
+            kCodon = 0;
+		for(k = jStart; k <= jEnd - pNumber; k++) {
+                kRow = kRow + 1;
+                kCodon = kCodon + 1; // current codon in gene
+              yModelGene.at(kCodon) = yModelGene.at(kCodon) / tModelGenePerCodon;
+              xExperGene.at(kCodon) = xExperGene.at(kCodon) / tExperGenePerCodon;
+
+                 wExperGene.at(kCodon) = 1;
+              if(strWeight =="WEIGHTED") {wExperGene.at(kCodon) = tExperGenePerCodon;}
+
+                yModel.at(kRow) = yModelGene.at(kCodon);
+                xExper.at(kRow) = xExperGene.at(kCodon);
+                wExper.at(kRow) = wExperGene.at(kCodon);
+        }
+
+        // Get Exper-Model pausing score correlations
+        Get_X_Y_Correlation(1, kCodon, xExperGene, yModelGene, wExperGene,
+                            xExperAver, sigmaXE2, yModelAver, sigmaYM2, corrME);
+            R2 = 0;
+        if(sigmaYM2 > 0 && sigmaXE2 > 0) {R2 = corrME * corrME / (sigmaYM2 * sigmaXE2);}
+            corrME_Pearson = std::sqrt(R2);
+
+        // record correlations for a gene
+			CG.at(jGene).Name =DS.geneName.at(jGene);
+            CG.at(jGene).setA_Aver = xExperAver;
+			CG.at(jGene).setA_Sigma = std::sqrt(sigmaXE2);
+			CG.at(jGene).setB_Aver = yModelAver;
+			CG.at(jGene).setB_Sigma = std::sqrt(sigmaYM2);
+            CG.at(jGene).setAB_Corr_Raw = corrME;
+			CG.at(jGene).setAB_Corr_Pearson = corrME_Pearson;
+            CG.at(jGene).setAB_R2 = R2;
+
+        if(R2 < tol_R2) {
+            if(strMark == "MARK"){ // Mark gene as badly fitting
+                CG.at(jGene).Name  = "_" + DS.geneName.at(jGene);
+            }
+		}
+
+        //get energy statistics
+            i = 0;
+        for (k = 1; k <= kCodon; k++) {
+			if(yModelGene.at(k) > 0 && xExperGene.at(k) > 0) {
+					i = i + 1;
+				yModelGene.at(i) = std::log(yModelGene.at(k));
+				xExperGene.at(i) = std::log(xExperGene.at(k));
+				wExperGene.at(i) = wExperGene.at(k);
+			}
+        }
+
+        Get_X_Y_Correlation(1, i, xExperGene, yModelGene, wExperGene,
+                            xExperAver, sigmaXE2, yModelAver, sigmaYM2, corrME);
+                R2 = 0;
+        if(sigmaYM2 > 0 && sigmaXE2 > 0) {R2 = corrME * corrME / (sigmaYM2 * sigmaXE2);}
+                corrME_Pearson = std::sqrt(R2);
+
+    }
+
+    tLhd_Total_UB = tLhd_Total_UB;
+    tLhd_Total = tLhd_Total;
+
+	//  Print statistics
+	std::ofstream statistic_Output(strOutPutFile);
+	 std::stringstream ssLine;
+		ssLine.clear(); ssLine.str("");  //Clear Stream Buffer
+
+    ssLine<< "DataSet:  "<< DS.dataSetName << "; #_Genes=" << jTot
+		<< "; subSet# =" << jSet << "; subSet Name:" <<std::endl;
+    //<< DS.dataSubSetName.at(jSet)
+	statistic_Output<<ssLine.str();
+    std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
+
+    ssLine << strInfo << std::endl;
+	statistic_Output<<ssLine.str();
+    std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
+
+    ssLine <<  "# ;  Gene  ; AAs ; Ui ; Ui/Cod ; R2_Time ; crPrsn ; ExperAver ; sgmExper"
+    << " ; ModelAver ; sgmModel ;  ML value ;  Max ML  ;  ML/Max ML ;  Ui/Ti ; Ti/Cod"
+	<<std::endl;
+	statistic_Output<<ssLine.str();
+    std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
+
+		wTotal = 0.0;
+		averPRcorrW = 0.0;
+		averPRcorr = 0.0;
+	for(j = 1; j <= jTot; j++) {
+			jStart = DS.geneStart.at(j) + DS.jGeneStartShift;
+			jEnd = DS.geneEnd.at(j);
+			nCodon_Elong = jEnd - jStart + 1;
+		 wGene = nGeneRPF.at(j) / nGeneCod_Elong.at(j);
+		 tModelGenePerCodon = tModelGene_Elong.at(j) / nGeneCod_Elong.at(j);
+		 densGeneModel = nGeneRPF.at(j) / tModelGene_Elong.at(j);
+
+		ssLine << j << " ; " << CG.at(j).Name << " ; "
+		 << nGeneCod_Elong.at(j) << " ; " << nGeneRPF.at(j) << " ; " << wGene << " ; "
+		 << CG.at(j).setAB_R2 << " ; " << CG.at(j).setAB_Corr_Pearson << " ; "
+		 << CG.at(j).setA_Aver << " ; " << CG.at(j).setA_Sigma << " ; "
+		 << CG.at(j).setB_Aver << " ; " << CG.at(j).setB_Sigma << " ; "
+		 << tLhd_Gene.at(j) << " ; " << tLhd_Gene_UB.at(j) << " ; "
+		 << (tLhd_Gene.at(j) / tLhd_Gene_UB.at(j)) << " ; "
+			<< densGeneModel <<" ; " << tModelGenePerCodon << " ; " << std::endl;
+		statistic_Output<<ssLine.str();
+		std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
+
+
+		averPRcorrW = averPRcorrW + wGene *  CG.at(j).setAB_Corr_Pearson;
+			   averPRcorr = averPRcorr + CG.at(j).setAB_Corr_Pearson;
+			   wTotal = wTotal + wGene;
+	}
+	averPRcorrW = averPRcorrW / wTotal;
+    averPRcorr = averPRcorr / jTot;
+
+    ssLine <<  "# ;  Gene  ; AAs ; Ui ; Ui/Cod ; R2_Time ; crPrsn ; ExperAver ; sgmExper"
+    << " ; ModelAver ; sgmModel ;  ML value ;  Max ML  ;  ML/Max ML ;  Ui/Ti ; Ti/Cod"
+	<<std::endl;
+	statistic_Output<<ssLine.str();
+    std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
+
+    ssLine <<  ";   ;  ;  ;  ; AverPRcorr= ;" << averPRcorr << " ; " << std::endl;
+    statistic_Output<<ssLine.str();
+    std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
+
+    ssLine <<  ";   ;  ;  ;  ; AverPRcorrW= ;" << averPRcorrW << " ; " << std::endl;
+    statistic_Output<<ssLine.str();
+    std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
+
+
+    // get All-Gene statistics
+	Get_X_Y_Correlation(1, kRow, xExper, yModel, wExper,
+                            xExperAver, sigmaXE2, yModelAver, sigmaYM2, corrME);
+        R2 = corrME * corrME / (sigmaYM2 * sigmaXE2);
+        corrME_Pearson = std::sqrt(R2);
+
+    // print All-Gene statistics
+    ssLine <<  ";   ;  ;  ;  ; R2_Time ; crPrsn ; ExperAver ; sgmExper"
+    << " ; ModelAver ; sgmModel ;  ML value ;  Max ML  ;  ML/Max ML "
+	<<std::endl;
+	statistic_Output<<ssLine.str();
+    std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
+
+    ssLine << " ;   ;     ;   ;     ; " << R2 << " ; "
+    << corrME_Pearson << " ; " << xExperAver << " ; " << std::sqrt(sigmaXE2) << " ; "
+    << yModelAver << " ; " << std::sqrt(sigmaYM2) << " ; " << tLhd_Total << " ; "
+    << tLhd_Total_UB << " ; " << (tLhd_Total / tLhd_Total_UB) << std::endl;
+	statistic_Output<<ssLine.str();
+    std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
+}
+
+// =======================================================================
+void Get_X_Y_Correlation(long kStart, long kEnd, vector<double>& X, vector<double>& Y,
+	vector<double>& W, double& averX, double& sigmaX2, double& averY, double& sigmaY2,
+																		double& corrXY) {
+	//
+	//  Calculates correlation  between two data sets X and Y
+	//
+	long i, j, k, mL, mL1;
+	double vX, vY, vW, totW, averX2, averY2;
+
+	mL1 = X.size();
+	mL=mL1-1;
+	// Get Averages and Sigmas
+        averX = 0.0;
+        averY = 0.0;
+        averX2 = 0.0;
+        averY2 = 0.0;
+        totW = 0.0;
+    for(k = kStart; k <= kEnd; k++) {
+            vW = W.at(k);
+            vX = X.at(k);
+            vY = Y.at(k);
+        averX = averX + vW * vX;
+        averX2 = averX2 + vW * vX * vX;
+        averY = averY + vW * vY;
+        averY2 = averY2 + vW * vY * vY;
+            totW = totW + vW;
+    }
+        sigmaX2 = 0.0;
+        sigmaY2 = 0.0;
+        corrXY = 0.0;
+    if(totW > 0) {
+            averX = averX / totW;
+            averX2 = averX2 / totW;
+         sigmaX2 = (averX2 - averX * averX);
+            averY = averY / totW;
+            averY2 = averY2 / totW;
+         sigmaY2 = (averY2 - averY * averY);
+
+		// Get correlations
+            corrXY = 0;
+            totW = 0;
+		for(k = kStart; k <= kEnd; k++) {
+				vW = W.at(k);
+			corrXY = corrXY + vW * (X.at(k) - averX) * (Y.at(k) - averY);
+				totW = totW + vW;
+        }
+            corrXY = corrXY / totW;
+    }
+}
+
 //=============================================================================
-void VB_LUPA_Solve(int iP, const MatrixDouble& mA,
+void VB_Gauss_Solve(int iP, const MatrixDouble& mA,
 								vector<double>& vX, const vector<double>& vB){
 
-	// Factorise the matrix as A*P=L*U where L is low and U is upper triangular
-	// And keep the row rearrangements in the A matrix as a permutation matrix
-	// or rather a permiutation vector P (vP)
+	// Runs Guess elimination with row permutation on extended matrix mA:vB
 	// Note that the algorithm with permutations is described in Sprang
 	//
 	// iP:  input,  iP=0 then skip pivoting; iP>0 then do pivoting
 	// mA:  input,  mA is the matrix to be LUP factorized
-	// vP:  output, vP recods pivotiing process
 	//  vX:     output, solution vector
 	//  vB:     input, the right side vector
+	//
+	// Implemented by Michael Pavlov
+	//
+	long i, j, k, jR, j1, iFlag;
+	long mRow, nCol, mRow1, nCol1, nCol2;
+	long jP =0;
+	double vj, zj;
+	double rRow, rRowMax, rRowMaxAbs, rRowAbs, mLij, mUjj, zTol;
+	long iRowMax ;
+	zTol= 0.0000000000000001;
+    mRow1 = mA.size();
+	nCol1 = mA[1].size();
+        mRow=mRow1-1;
+        nCol=nCol1-1;
+		nCol2=nCol+2;
+     MatrixDouble mU(mRow1,vector<double>(nCol2,0.0));
+     vector<long> vP(mRow1,0);
+	 vector<double> v(nCol1,0.0);
+		vector<double> z(nCol1,0.0);
+		vector<double> W(nCol1,0.0);
+		vX.clear();
+		vX.resize(nCol1,0.0);
+	if(!(mRow==nCol)){
+        std::cout<< "mA-matrix in not square: mRow="<<mRow
+        <<"; nCol=" <<nCol<<std::endl;
+	}
+	//std::cout<< "mRow=" << mRow<<" ; nCol="<<nCol<<std::endl;
+
+   // prepare mU extended matrix
+	for (i = 1; i <= mRow; i++) {
+		for (j = 1; j <= nCol; j++) {
+			mU[i][j] = mA[i][j];
+		}
+			vP.at(i) = i;
+			mU[i][nCol1] = vB.at(i);
+	}
+
+	// main factorization cycle
+	for (j = 1; j <= nCol; j++) {
+		//at step j find the largest pivot in column j below j
+			iRowMax = j;
+			rRowMax = mU[j][j];
+			rRowMaxAbs = std::abs(rRowMax);
+		for (i = j; i <= mRow; i++) {
+				rRowAbs = std::abs(mU[i][j]);
+			if (rRowMaxAbs < rRowAbs) {// a larger pivot is found
+				rRowMaxAbs = rRowAbs;
+				iRowMax = i;
+			}
+		}
+		if (iP == 0) { iRowMax = j;} // Run without pivoting
+		if (iRowMax > j) { // Swap  rows *iRowMax* and *j* in mL+mR
+				// record the row swap in A in the vector vP
+				jR = vP.at(j);
+				vP.at(j) = vP.at(iRowMax);
+				vP.at(iRowMax) = jR; // record the swap
+			// actually swap the rows j and iRowMax (both in L and in the remaining of A)
+			for (k = 1; k <= nCol1; k++) {
+				rRow = mU[j][k];
+				mU[j][k] = mU[iRowMax][k];
+				mU[iRowMax][k] = rRow;
+			}
+		}
+		// calculate  new column j of a low triangular mL matrix
+		// the k element of column j mLkj contains the elimination coefficient
+		// for subtracting row j from from row k creating a zero subcolumn in
+		// modified A
+			mUjj = mU[j][j]; // get the current pivot
+			j1 = j + 1;
+		if(std::abs(mUjj) >= zTol) { // run the elimination
+				for (i = j1; i <= mRow; i++) {
+						mLij = mU[i][j] / mUjj; // the new component of the column mL
+						mU[i][j] = mLij; // save elimination coefficients in a low part of mU
+				  // subtract row j multiplied by Lij from row i of modified A
+					for (k = j; k <= nCol1; k++) {
+						mU[i][k] = mU[i][k] - mLij * mU[j][k];
+					}
+				}
+		}
+		else {//put real zeroes to stress that mUjj=0 and skip the elimination step
+					iFlag = 2;  // note the matrix mA singularity
+				for (i = j; i<=mRow; i++) {
+					mU[i][j] = 0;
+				}
+			}
+		v.at(j) = mU[j][nCol1];
+	}
+
+    // Solve mU*z=v by backsubstitutions
+    for (j = mRow; j>= 1; j=j-1) {
+            mUjj = mU[j][j];
+            zj = 8;
+        if (std::abs(mUjj) > zTol) {
+			zj = v[j] / mUjj;
+			}
+            z[j] = zj;
+            vX[j] = zj;
+        for (i = 1; i <= j; i++){
+            v[i] = v[i] - zj * mU[i][j];
+        }
+	}
+}
+
+//=============================================================================
+void VB_LUPA_Invert(int iP, const MatrixDouble& mA, MatrixDouble& mAM1){
+
+	// Factorizes the matrix as P*A=L*U where L is a low and U an upper triangular
+	// The row rearrangements in the A matrix  are kept in permutation vector vP)
+	//
+	// It then Inverts matrix A that has been LUPA factorized
+	// Note that the algorithm with permutations is described in Sprang
+	// Implemented by Michael Pavlov
+	//
+	// iP:  input,  iP=0 then skip pivoting; iP>0 then do pivoting
+	// mA:  input,  mA is the matrix to be LUP factorized
+	// mAM1:  output, inverted matrix mA
 	//
 	long i, j, k, jR, j1, iFlag;
 	long mRow, nCol, mRow1, nCol1;
@@ -2897,165 +3234,57 @@ void VB_LUPA_Solve(int iP, const MatrixDouble& mA,
 	  }
 
 //
-	// Given equation A*x=b and P*A=L*U factorization
-	//  solve equation L*U*x=PM1*b
-	//  by first  solving  L*v=PM1*b by forward substitutions
-	//  and then U*x=v by back-substitutions
-	//
+	// Inverts matrix A that has been LUPA factorised as P*A=L*U
+	// it does it by solving n-equations with ek-right sides
+	// i.e it solves A*AM1(k)=e(k) where AM1(k)
+	// is a k-column of A inverse
 
 	vector<double> v(nCol1,0.0);
 	vector<double> z(nCol1,0.0);
 	vector<double> W(nCol1,0.0);
-	vX.clear();
-	vX.resize(nCol1,0.0);
+	mAM1.clear();
+	mAM1.resize(mRow1, vector<double>(nCol1,0.0));
+	long kP=0;
+	//prepare intermediate vectors
+	//
+	for(k = 1; k <= nCol; k++) {
+		for(j = 1; j <= nCol; j++){
+			v.at(j) = 0;
+			z.at(j) = 0;
+			W.at(j) = 0;
+			jP = vP.at(j); //permutate e(k) components
+		  if (jP == k) {kP = k;}
+		  mAM1[j][k] = 0;
+		}
+			W.at(kP) = 1.0;
 
-	// permutate vb components of the right side
-	// check also for j/jP-boundaries violations
-    for (j = 1;j <= nCol; j++){
-        jP = vP.at(j);
-        W.at(j) = vB.at(jP);
-    }
-
-    // get L*v=w solution by forward substitutions
-    for (j = 1; j <= nCol; j++) {
-            vj = 0;
-		if (std::abs(W[j]) > 0) {vj = W[j] / mL[j][j];}
+		// Solve L*v=W for v by forward substitutions
+		for(j = kP; j <= nCol; j++){
+				vj = 0;
+			if (std::abs(W[j]) > 0) {
+				vj = W[j] / mL[j][j];
+			}
 				v[j] = vj;
-			if (std::abs(vj) > 0) { // update current right side
-				for (i = j; i <= nCol; i++){
+			if (std::abs(vj) > 0) {
+				for (i = j; i <= nCol; i++) {
 					W[i] = W[i] - vj * mL[i][j];
 				}
 			}
-	}
-
-    //then solve mU*z=v by backsubstitutions
-    for (j = nCol; j>= 1; j=j-1) {
-            mUjj = mU[j][j];
-            zj = 8;
-        if (std::abs(mUjj) > zTol) {
-			zj = v[j] / mUjj;
-			}
-		else{iFlag=2;
-            std::cout<<"mUjj pivot is zero, mUjj="<<mUjj<<std::endl;
 		}
-            z[j] = zj;
-            vX[j] = zj;
-        for (i = 1; i <= j; i++){
-            v[i] = v[i] - zj * mU[i][j];
-        }
-	}
-}
 
-// ==============================================================================
-void Get_PCorr_Rows_mA_New(long& jCol_Start, long& jCol_End, const MatrixDouble& mA,
-								const MatrixDouble& wA, vector<double>& mA_RowAver,
-									vector<double>& mA_RowSigma, MatrixDouble& mPC) {
-	//
-	// It Gets Pearson correlation between rows of matrix A
-	long i, j, k,  mRow, nCol, mRow1, nCol1;
-		mRow1 = mA.size();
-		nCol1 = mA[1].size();
-		mRow=mRow1-1;
-		nCol=nCol1-1;
-	if (jCol_Start == 0) {jCol_Start = 1;}
-	if (jCol_End == 0) {jCol_End = nCol;}
-
-		mA_RowAver.clear(); mA_RowSigma.clear(); mPC.clear();
-		mA_RowAver.resize(mRow1,0.0); mA_RowSigma.resize(mRow1,0.0);
-		mPC.resize(mRow1, vector<double>(mRow1,0.0));
-		double rowAver, rowAver2, wRow;
-
-	// get row averages and their sigmas for matrix mA
-		for(i = 1; i <= mRow; i++) {
-				rowAver = 0.0;
-				rowAver2 = 0.0;
-				wRow = 0.0;
-			for(j = jCol_Start; j <= jCol_End; j++) {
-				wRow = wRow + wA[i][j]; 			//weighted sum for row iRow
-				rowAver = rowAver + mA[i][j] * wA[i][j];
-				rowAver2 = rowAver2 + mA[i][j] * mA[i][j] * wA[i][j];
+		//then solve mU*z=v by back-substitutions
+		for (j = nCol; j >= 1 ;j=j-1) {
+				mUjj = mU[j][j];
+				zj = 8;
+			if (std::abs(mUjj) > zTol) {
+				zj = v[j] / mUjj;
 			}
-				mA_RowAver.at(i) = rowAver / wRow; //row average
-			mA_RowSigma.at(i) = rowAver2 / wRow;
-			mA_RowSigma.at(i) =
-				std::sqrt(std::abs(mA_RowSigma.at(i) - mA_RowAver.at(i) * mA_RowAver.at(i)));
-		}
-	//
-	// calculate row  correlations between  matrices mA and mB
-	   double pCorr, wGT;
-	for(i = 1; i <= mRow; i++) {
-		for(k = i; k<= mRow; k++) {
-				pCorr = 0;
-				wRow = 0;
-			for(j = jCol_Start; j <= jCol_End; j++) {
-				wGT = std::sqrt(wA[i][j] * wA[k][j]); //compozed weight
-				wRow = wRow + wGT;
-				pCorr = pCorr +
-					wGT * (mA[i][j] - mA_RowAver.at(i)) * (mA[k][j]  - mA_RowAver.at(k));
+			else{iFlag=2;}
+				z[j] = zj;
+				mAM1[j][k] = zj;
+			for(i = 1; i<= j; i++){
+				v[i] = v[i] - zj * mU[i][j];
 			}
-					mPC[i][k] = pCorr / wRow;
-				if(std::abs(mA_RowSigma.at(i)) > 0 && std::abs(mA_RowSigma.at(k)) > 0) {
-					mPC[i][k] = mPC[i][k] / (mA_RowSigma.at(i) * mA_RowSigma.at(k));
-				}
-					mPC[k][i] = mPC[i][k];
-		}
-	}
-}
-
-// =============================================================================
-void Get_PCorr_Cols_mA_New(long iRow_Start, long iRow_End, const MatrixDouble& mA,
-		const MatrixDouble& wA, vector<double>& mA_ColAver,
-								vector<double>& mA_ColSigma, MatrixDouble& mPC) {
-	//
-	// It Gets Pearson correlation between rows of matrix A
-	long i, j, k, iRow, jCol, mRow, nCol, mRow1, nCol1;
-    mRow1 = mA.size();
-    nCol1 = mA[1].size();
-    mRow=mRow1-1;
-    nCol=nCol1-1;
-		mA_ColAver.clear(); mA_ColSigma.clear(); mPC.clear();
-		mA_ColAver.resize(nCol1,0.0); mA_ColSigma.resize(nCol1,0.0);
-		mPC.resize(nCol1, vector<double>(nCol1,0.0));
-	double colAver, colAver2, wCol;
-
-	//get row averages and their sigmas for matrix mA
-    for(j = 1; j <= nCol; j++) {
-            colAver = 0;
-            colAver2 = 0;
-            wCol = 0;
-        for(i = iRow_Start; i <= iRow_End; i++) {
-            wCol = wCol + wA[i][j]; //Sum of weights
-            colAver = colAver + mA[i][j] * wA[i][j];
-            colAver2 = colAver2 + mA[i][j] * mA[i][j] * wA[i][j];
-        }
-            mA_ColAver.at(j) = 0;
-            mA_ColSigma.at(j) = 0;
-        if(wCol > 0) {
-            mA_ColAver.at(j) = colAver / wCol; // codon averaged FP for position iPos
-            mA_ColSigma.at(j) = colAver2 / wCol;  //codon averaged FP2 for position iPos
-            mA_ColSigma.at(j) =
-			   std::sqrt(std::abs(mA_ColSigma.at(j) - mA_ColAver.at(j) * mA_ColAver.at(j)));
-        }
-    }
-
-	//calculate  matrices mA column correlations
-	double pCorr, wGT;
-	for(j = 1; j <= nCol; j++) {
-		for(k = j; k <= nCol; k++) {
-				pCorr = 0;
-				wCol = 0;
-			for (i = iRow_Start; i <= iRow_End; i++) {
-				wGT = std::sqrt(wA[i][j] * wA[i][k]); // compozed weight
-				wCol = wCol + wGT;
-				pCorr = pCorr +
-				  wGT * (mA[i][j] - mA_ColAver.at(j)) * (mA[i][k] - mA_ColAver.at(k));
-			}
-				mPC[j][k] = 0;
-			if((wCol > 0) && (std::abs(pCorr) > 0)) {
-				mPC[j][k] = pCorr / wCol;
-				mPC[j][k] = mPC[j][k] / (mA_ColSigma.at(j) * mA_ColSigma.at(k));
-			}
-				mPC[k][j] = mPC[j][k];
 		}
 	}
 }
