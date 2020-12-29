@@ -220,8 +220,8 @@ int main(){
     "C:\\Users\\MikeP\\My Documents\\CPP_Program_Languadge\\CodeBlockCpp\\zFP_Refined_OutPut.txt";
        strText="Refined zFP factors";
         strNorm="NATIVE";
-        iPrint_rpfOmega=0;
-        iPrint_Col_Corr=0;
+        iPrint_rpfOmega=1;
+        iPrint_Col_Corr=1;
         pC_First=1;
         pC_Last=15;
     Print_vFP_Full_As_MatrixB(zFP_OutputFile,strText, strNorm, iPrint_rpfOmega,
@@ -929,7 +929,7 @@ void Get_ML_zHAT(const string strReportFile,long jSet, long pAsite , long pNumbe
 
 	//record rpfOmega RPF FingerPrint
 	for (iPos = 1; iPos <= pNumber; iPos++) {
-		for (indCodon = 0; indCodon <= cNumber; indCodon++) {
+		for (indCodon = 1; indCodon <= cNumber; indCodon++) {
 			DS.rpfOmegaExper[iPos][indCodon] = rpfOmegaExper[iPos][indCodon];
 		}
 	}
@@ -1815,6 +1815,13 @@ void Hes_Pos_ML_Refine_zFactors(const string strReportFilePath, long jSet, long 
             muStandard = muStandard + gene_Ci_Exper / nCodon_Elong;
 	}
 
+	//record rpfOmega RPF FingerPrint
+	for (iPos = 1; iPos <= pNumber; iPos++) {
+		for (indCodon = 1; indCodon <= cNumber; indCodon++) {
+			DS.rpfOmegaExper[iPos][indCodon] = rpfOmegaExper[iPos][indCodon];
+		}
+	}
+
 	//Get Log-Likelihood function
 	Get_Log_Likelihood(jSet, DS, zFP, tModel,
                         tGeneElong, tLhd_Total, tLhd_Gene, tLhd_Gene_UB, tLhd_Total_UB);
@@ -2399,10 +2406,6 @@ void Print_vFP_Full_As_MatrixB(const string strPrintOutputPath, string strText, 
 	MatrixDouble mFPW(pNumber1, vector<double>(nCodon1,0.0));
 
 	MatrixDouble mFPexp(pNumber1, vector<double>(nCodon1,0.0));
-
-
-
-
 	vector<double> mFPW_CodonSum(nCodon1,0.0);
 
 	// convert long vectors to  matrices
