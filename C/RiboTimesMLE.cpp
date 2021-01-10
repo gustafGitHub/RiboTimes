@@ -107,6 +107,11 @@ RCPP_MODULE(mod) {
   function( "runMLE", &runMLE );
 }
 
+Environment base = Environment("package:base");
+Function readline = base["readline"];
+Function as_integer = base["as.integer"];
+Function as_character = base["as.character"];
+
 // SUB Declarations
 
 void Get_Sequence_RPFs(int , const string, RPFdataSet&);
@@ -137,10 +142,9 @@ void Hes_Pos_ML_Refine_zFactors(const string, long, long, long, long,
 		vector<double>& , vector<double>& ,
 		vector<double>& ,vector<double>& );
 
-void Print_vFP_Full_As_MatrixB(const string, string, const string, const int,
-        int, int, int, RPFdataSet&, const long ,
-		vector<double>& , vector<double>& , vector<double>& );
-
+void Print_vFP_Full_As_MatrixB(const string , string , string ,
+	int , int , RPFdataSet& ,const long , int , int , int ,
+	vector<double>& , vector<double>& , vector<double>& );
 
 void VB_Gauss_Solve(int , const MatrixDouble& ,
 								vector<double>& , const vector<double>& );
@@ -181,161 +185,203 @@ List runMLE(string strDataSetFileName, string strDataSetFilePath){
 	RPFdataSet DS;
   Get_Sequence_RPFs(nRPFadd,strDataSetFileName,DS);
 
-	string outPutFileStatistics = strDataSetFilePath + "ZI_OutPut.txt";
-	// "/Users/gustafullman/Documents/src/RiboTimes/data/ZI_OutPut.txt";
-	Print_DataSet_Statistics(outPutFileStatistics,DS);
+	string outPutDatasetStatistics = strDataSetFilePath + "DS_Stat_OutPut.txt";
+	std::ofstream osu(outPutDatasetStatistics, std::ios::out | std::ios::trunc);
+    // osu<<"___"<<std::endl;
+    osu.close();
+	Print_DataSet_Statistics(outPutDatasetStatistics,DS);
 
 	long jSet=0, pAsite=8, pNumber=15, jGeneStartShift=0;
+	int kIter=0, pC_Change =0;
+	 do{
+            std::cout<<"pA=" <<pAsite << "; To use A-site position pA enter 0, to change enter pA > 0" << std::endl;
+            pC_Change = as<int>(as_integer(readline("> ")));
+         if (pC_Change>0) {pAsite=pC_Change;}
+            std::cout<<"pL=" <<pNumber << "; To use local sequence length pL enter 0, to change enter pL > 0" << std::endl;
+            pC_Change = as<int>(as_integer(readline("> ")));
+         if (pC_Change>0) {pNumber=pC_Change;}
+        std::cout<<"pA= " <<pAsite << "; pL= " <<pNumber
+                        <<"; To use them enter 0, to change enter 1" << std::endl;
+           pC_Change  = as<int>(as_integer(readline("> ")));
+           if (pC_Change == 0) {break;}
+           kIter++;
+    } while(kIter<7);
+
+
 	vector<double> tML_long, tML_Sigma_long, wML_long;
 	vector<double> zFP_long, zFP_Sigma_long, wFP_long;
 
-	string reportOut_zHAT = strDataSetFilePath + "Z_HAT_Report.txt";
-	//"/Users/gustafullman/Documents/src/RiboTimes/data/Z_HAT_Report.txt";
+	string zFP_Refinement_Log = strDataSetFilePath + "Refinement_Log.txt";
+    std::ofstream osa(zFP_Refinement_Log, std::ios::out | std::ios::trunc);
+    //osa<<"___"<<std::endl;
+    osa.close();
 
-	Get_ML_zHAT(reportOut_zHAT,jSet,pAsite,pNumber,jGeneStartShift,DS,
+	Get_ML_zHAT(zFP_Refinement_Log,jSet,pAsite,pNumber,jGeneStartShift,DS,
         tML_long,tML_Sigma_long,wML_long);
 
     // print zHAT results
     string zHAT_OutputFile = strDataSetFilePath + "zFP_HAT_OutPut.txt";
     //"/Users/gustafullman/Documents/src/RiboTimes/data/zFP_HAT_OutPut.txt";
         string strText="First guess zHAT coefficients";
-        string strNorm="NATIVE";
-        int iPrint_rpfOmega=1;
-        int iPrint_Col_Corr=0;
         int pC_First=1;
-        int pC_Last=15;
-    Print_vFP_Full_As_MatrixB(zHAT_OutputFile,strText, strNorm, iPrint_rpfOmega,
-        iPrint_Col_Corr, pC_First, pC_Last, DS, jSet,
+        int pC_Last=pNumber;
+		string strNorm="NORMALIZED";
+		int iPrint_Codon_Stat=0;  	// do not print codon statistics
+		int iPrint_rpfOmega=0;		// do not print rpf_Omega
+		int iPrint_Col_Corr=0;		// do not print Col_Corr of z(p,c) Matrix
+    Print_vFP_Full_As_MatrixB(zHAT_OutputFile,strNorm, strText, pC_First, pC_Last, DS, jSet,
+		iPrint_Codon_Stat, iPrint_rpfOmega, iPrint_Col_Corr,
 		tML_long,tML_Sigma_long,wML_long);
 
-    string zFP_Refinementr_Log = strDataSetFilePath + "Refinement_Log.txt";
-    Hes_Pos_ML_Refine_zFactors(zFP_Refinementr_Log, jSet, pAsite, pNumber, jGeneStartShift,DS,
+    Hes_Pos_ML_Refine_zFactors(zFP_Refinement_Log, jSet, pAsite, pNumber, jGeneStartShift, DS,
         tML_long,tML_Sigma_long,wML_long, zFP_long, zFP_Sigma_long, wFP_long);
 
     // more refinement?
-    int kIter=0, kEnd=0;
+    int  kEnd=0;
     do{
         std::cout<<"GradNorn<0.5? Stop? To stop enter 1; to continue enter 0" << std::endl;
-        //std::cin >>  kEnd;
-        kEnd = 0;
+        kEnd  = as<int>(as_integer(readline("> ")));
         if(kEnd==1) {break;}
 
-    Hes_Pos_ML_Refine_zFactors(zFP_Refinementr_Log, jSet, pAsite, pNumber, jGeneStartShift,DS,
+    Hes_Pos_ML_Refine_zFactors(zFP_Refinement_Log, jSet, pAsite, pNumber, jGeneStartShift,DS,
          zFP_long, zFP_Sigma_long, wFP_long, zFP_long, zFP_Sigma_long, wFP_long);
         kIter++;
-    } while(kIter<7||kEnd==1);
+    } while(kIter<7);
 
-    string strPrint_Time_Factor= strDataSetFilePath + "Global_Time_Log.txt";
-		pC_First=5;
-        pC_Last=9;
-	Get_gij_Model_Time(strPrint_Time_Factor, jSet, pC_First, pC_Last, DS, zFP_long, zFP_Sigma_long);
-
-    // print zFP refined results
-    string zFP_OutputFile = strDataSetFilePath + "zFP_Refined_OutPut.txt";
-       strText="Refined zFP factors";
-        strNorm="NATIVE";
-        iPrint_rpfOmega=1;
-        iPrint_Col_Corr=1;
-        pC_First=1;
-        pC_Last=15;
-    Print_vFP_Full_As_MatrixB(zFP_OutputFile,strText, strNorm, iPrint_rpfOmega,
-        iPrint_Col_Corr, pC_First, pC_Last, DS, jSet,
-		zFP_long, zFP_Sigma_long, wFP_long);
-
-	// print R2 gene statistics
+    // print R2 gene statistics
     string R2_OutPutFile = strDataSetFilePath + "R2_OutPut.txt";
         string strMode="";
         string strMark="MARK";
         string strWeight="WEIGHTED";
         string strInfo="R2 Output using Refined zFP factors";
         double tol_R2=0.1;
+        pC_First=1;
+        pC_Last=pNumber;
     Report_R2_zFP_Statistics(R2_OutPutFile, jSet, strMode,  strMark,strWeight, strInfo,
                              tol_R2, pC_First, pC_Last, DS,  zFP_long, zFP_Sigma_long);
-    
-    // Add some elements of DS to outputList
-    
-    outputList["dataSetName"] = DS.dataSetName;
-    outputList["dataSubSetName"] = DS.dataSubSetName;
-    outputList["dataSubSet_RPF_Total"] = DS.dataSubSet_RPF_Total;
-    outputList["doublingTime"] = DS.doublingTime;
-    outputList["pAsite"] = DS.pAsite;
-    outputList["pNumber"] = DS.pNumber;
-    outputList["cNumber"] = DS.cNumber;
-    outputList["geneCodeTable"] = DS.geneCodeTable;
-    outputList["geneCodeTableOrdered"] = DS.geneCodeTableOrdered;
-    outputList["rCodonSeq"] = DS.rCodonSeq;
-    outputList["geneName"] = DS.geneName;
-    outputList["geneStart"] = DS.geneStart;
-    outputList["geneEnd"] = DS.geneEnd;
-    outputList["jTot"] = DS.jTot;
-    
-    outputList["geneCodons"] = DS.geneCodons;
-    outputList["geneRPFtotal"] = DS.geneRPFtotal;
-    outputList["geneRPFdensity"] = DS.geneRPFdensity;
-    
-    outputList["gene_Elong_AA"] = DS.gene_Elong_AA;
-    outputList["gene_Ci_Exper"] = DS.gene_Ci_Exper;
-    
-    outputList["gene_di_Exper"] = DS.gene_di_Exper;
-    outputList["gene_fi_Model"] = DS.gene_fi_Model;
-    outputList["gene_Gi_Model"] = DS.gene_Gi_Model;
-    outputList["gene_Gi_Model_Time"] = DS.gene_Gi_Model_Time;
-    outputList["gene_Ti_Model_Time_Abs"] = DS.gene_Ti_Model_Time_Abs;
-    
-    outputList["global_Time_Factor"] = DS.global_Time_Factor;
-    outputList["rpfOmegaExper"] = DS.rpfOmegaExper;
-    
-    outputList["iORFcodons"] = DS.iORFcodons;
-    outputList["indCodonOrder"] = DS.indCodonOrder;
-    outputList["nRPF"] = DS.nRPF;
-    outputList["nRPFadded"] = DS.nRPFadded;
-    
-    outputList["sij_Exper"] = DS.sij_Exper;
-    outputList["sij_Model"] = DS.sij_Model;
-    outputList["sij_Model_Sigma"] = DS.sij_Model_Sigma;
-    outputList["sij_Model_Time"] = DS.sij_Model_Time;
-    outputList["sij_Model_Time_Sigma"] = DS.sij_Model_Time_Sigma;
-    
-    outputList["pC_First"] = DS.pC_First;
-    outputList["pC_Last"] = DS.pC_Last;
-    
-    outputList["gij_Model"] = DS.gij_Model;
-    outputList["gij_Model_Sigma"] = DS.gij_Model_Sigma;
-    
-    outputList["gij_Model_Time"] = DS.gij_Model_Time;
-    outputList["gij_Model_Time_Sigma"] = DS.gij_Model_Time_Sigma;
-    
-    outputList["tij_Model_Time_Abs"] = DS.tij_Model_Time_Abs;
-    outputList["tij_Model_Time_Abs_Sigma"] = DS.tij_Model_Time_Abs_Sigma;
 
-    // Add some other variables of interest to outputList
-    
-    outputList["zFP"] = zFP_long;
-    outputList["zFP_Sigma"] = zFP_Sigma_long;
-    
-    outputList["tML_long"] = tML_long;
-    outputList["tML_Sigma_long"] = tML_Sigma_long;
-    
-    /*
-     * 
-     
-     string strModel_Info;
-     
-     MatrixDouble rDwellTime;
-     
-     vector<long> nCodCount;
-     vector<double> codUsage;
-     vector<double> codRPFsAver;
-     vector<double> codRPFsSigma;
-     * 
-     */
+    // print zFP refined results
+    string zFP_OutputFile = strDataSetFilePath + "zFP_Refined_OutPut.txt";
+       strText="Refined zFP factors";
+        pC_First=1;
+        pC_Last=15;
+		strNorm="NORMALIZED";
+		iPrint_Codon_Stat=0;  	// do not print codon statistics
+		iPrint_rpfOmega=0;		// do not print rpf_Omega
+		iPrint_Col_Corr=0;		// do not print Col_Corr of z(p,c) Matrix
+    Print_vFP_Full_As_MatrixB(zFP_OutputFile,strNorm, strText, pC_First, pC_Last, DS, jSet,
+		iPrint_Codon_Stat, iPrint_rpfOmega, iPrint_Col_Corr,
+		zFP_long, zFP_Sigma_long, wFP_long);
+
+        pC_First=5;
+        pC_Last=9;
+        pC_Change =0;
+        kIter=0;
+	 do{
+        std::cout<<"p1=" <<pC_First << "; To keep enter 0, to change enter p1 > 0" << std::endl;
+        pC_Change = as<int>(as_integer(readline("> ")));
+        if (pC_Change>0) {pC_First=pC_Change;}
+          std::cout<<"p2=" <<pC_Last << "; To keep enter 0, to change enter p2 > 0" << std::endl;
+          pC_Change = as<int>(as_integer(readline("> ")));
+          if (pC_Change>0) {pC_Last=pC_Change;}
+          std::cout<<"p1= " <<pC_First << "; p2= " <<pC_Last
+                        <<"; To use them enter 0, to change enter 1" << std::endl;
+           pC_Change = as<int>(as_integer(readline("> ")));
+           if (pC_Change == 0) {break;}
+           kIter++;
+    } while(kIter<7);
+	Get_gij_Model_Time(zFP_Refinement_Log, jSet, pC_First, pC_Last, DS, zFP_long, zFP_Sigma_long);
 
 	// print sij/gij for a particular gene
-  string gij_Print_Out= strDataSetFilePath + "sij_gij_PrintOut.txt";
+    string gij_Print_Out = strDataSetFilePath + "sij_gij_PrintOut.txt";
+    std::ofstream os(gij_Print_Out, std::ios::out | std::ios::trunc);
+    os.close();
 	string strGeneName="lpp";
-	Print_sij_gij_for_Gene(gij_Print_Out, jSet, strGeneName,"", DS);
-	
-	return outputList;
+        kIter=0;
+        std::cout<<"sij, gij and tij_Abs will be printed out for gene: " <<strGeneName << std::endl;
+	 do{
+        std::cout<<"Input this name or a different one (_ to finish):"<< std::endl;
+        strGeneName = as<string>(as_character(readline("> ")));
+        std::cout<< "sij, gij and tij_Abs for gene: " << strGeneName << std::endl;
+            if(strGeneName=="_") {break;}
+        Print_sij_gij_for_Gene(gij_Print_Out, jSet, strGeneName,"", DS);
+        kIter++;
+    } while(kIter<7);
+	 
+	 // Add some elements of DS to outputList
+	 
+	 outputList["dataSetName"] = DS.dataSetName;
+	 outputList["dataSubSetName"] = DS.dataSubSetName;
+	 outputList["dataSubSet_RPF_Total"] = DS.dataSubSet_RPF_Total;
+	 outputList["doublingTime"] = DS.doublingTime;
+	 outputList["pAsite"] = DS.pAsite;
+	 outputList["pNumber"] = DS.pNumber;
+	 outputList["cNumber"] = DS.cNumber;
+	 outputList["geneCodeTable"] = DS.geneCodeTable;
+	 outputList["geneCodeTableOrdered"] = DS.geneCodeTableOrdered;
+	 outputList["rCodonSeq"] = DS.rCodonSeq;
+	 outputList["geneName"] = DS.geneName;
+	 outputList["geneStart"] = DS.geneStart;
+	 outputList["geneEnd"] = DS.geneEnd;
+	 outputList["jTot"] = DS.jTot;
+	 
+	 outputList["geneCodons"] = DS.geneCodons;
+	 outputList["geneRPFtotal"] = DS.geneRPFtotal;
+	 outputList["geneRPFdensity"] = DS.geneRPFdensity;
+	 
+	 outputList["gene_Elong_AA"] = DS.gene_Elong_AA;
+	 outputList["gene_Ci_Exper"] = DS.gene_Ci_Exper;
+	 
+	 outputList["gene_di_Exper"] = DS.gene_di_Exper;
+	 outputList["gene_fi_Model"] = DS.gene_fi_Model;
+	 outputList["gene_Gi_Model"] = DS.gene_Gi_Model;
+	 outputList["gene_Gi_Model_Time"] = DS.gene_Gi_Model_Time;
+	 outputList["gene_Ti_Model_Time_Abs"] = DS.gene_Ti_Model_Time_Abs;
+	 
+	 outputList["global_Time_Factor"] = DS.global_Time_Factor;
+	 outputList["rpfOmegaExper"] = DS.rpfOmegaExper;
+	 
+	 outputList["iORFcodons"] = DS.iORFcodons;
+	 outputList["indCodonOrder"] = DS.indCodonOrder;
+	 outputList["nRPF"] = DS.nRPF;
+	 outputList["nRPFadded"] = DS.nRPFadded;
+	 
+	 outputList["sij_Exper"] = DS.sij_Exper;
+	 outputList["sij_Model"] = DS.sij_Model;
+	 outputList["sij_Model_Sigma"] = DS.sij_Model_Sigma;
+	 outputList["sij_Model_Time"] = DS.sij_Model_Time;
+	 outputList["sij_Model_Time_Sigma"] = DS.sij_Model_Time_Sigma;
+	 
+	 outputList["pC_First"] = DS.pC_First;
+	 outputList["pC_Last"] = DS.pC_Last;
+	 
+	 outputList["gij_Model"] = DS.gij_Model;
+	 outputList["gij_Model_Sigma"] = DS.gij_Model_Sigma;
+	 
+	 outputList["gij_Model_Time"] = DS.gij_Model_Time;
+	 outputList["gij_Model_Time_Sigma"] = DS.gij_Model_Time_Sigma;
+	 
+	 outputList["tij_Model_Time_Abs"] = DS.tij_Model_Time_Abs;
+	 outputList["tij_Model_Time_Abs_Sigma"] = DS.tij_Model_Time_Abs_Sigma;
+	 
+	 outputList["strModel_Info"] = DS.strModel_Info;
+	 
+	 outputList["rDwellTime"] = DS.rDwellTime;
+	 
+	 outputList["nCodCount"] = DS.nCodCount;
+	 outputList["codUsage"] = DS.codUsage;
+	 outputList["codRPFsAver"] = DS.codRPFsAver;
+	 outputList["codRPFsSigma"] = DS.codRPFsSigma;
+	 
+	 // Add some other variables of interest to outputList
+	 
+	 outputList["zFP"] = zFP_long;
+	 outputList["zFP_Sigma"] = zFP_Sigma_long;
+	 
+	 outputList["tML_long"] = tML_long;
+	 outputList["tML_Sigma_long"] = tML_Sigma_long;
+	 
+	 return outputList;
 }
 
 // ================================
@@ -776,6 +822,8 @@ int jGene;
 		int jTot1=jTot+1;
 		long mRow=DS.geneEnd.at(jTot);				// The number of core data rows
 
+		double fraCodon=0.0;
+
 	// Do thourough data set statistics
 	// get averaged RPFs per codon in the data set jSet
 		double diffCounts=0.0;
@@ -811,52 +859,51 @@ int jGene;
     }
 
 	// OUTPUT for DATASET CODONS
-	std::ofstream dataOutput(strOutPutFile);
+	std::ofstream dataOutput(strOutPutFile, std::ios::out | std::ios::app);
 	 std::stringstream ssLine;
 		ssLine.clear(); ssLine.str("");  //Clear Stream Buffer
-	ssLine << "Data Set Basic Statistics: #Codons in DataSet = " << nCodonTotal <<
-                ";  Total RPFs in Data Set= " << totalRPF<< std::endl;
+	ssLine << "Data Set Basic Statistics: #Codons in DataSet = ; " << nCodonTotal <<
+                " ;  Sum RPFs in Data Set= ; " << totalRPF<< std::endl;
     dataOutput<<ssLine.str();
     std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
-    ssLine <<"Codon ; Rank  ; #Codons ; Fraction ; codUsage ; Fraction ; RPF/Codon ; "
+    ssLine <<"Codon ; Rank  ; #Codons ; Fraction (%); codUsage ; Fraction (%) ; RPF/Codon ; "
 	<< "Sigm_RPFs ; Codon_Identity"<<std::endl;
 	dataOutput<<ssLine.str();
 	std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
     for (k = 1; k <= cNumber; k++) {
-        ssLine <<DS.geneCodeTableOrdered.at(k).substr(0,6)<<" ; "
-        <<k<<" ; "<<nCodCount.at(k)
-        <<" ; " << (1000 * nCodCount.at(k) / nCodonTotal)<<" ; "
-        <<DS.codUsage.at(k)<<" ; "<<(1000 * DS.codUsage.at(k))<<" ; "
+            fraCodon=100.0 * nCodCount.at(k) / nCodonTotal;
+        ssLine <<DS.geneCodeTableOrdered.at(k).substr(0,7)<<" ; "
+        <<k<<" ; "<<nCodCount.at(k) <<" ; " << fraCodon <<" ; "
+        <<DS.codUsage.at(k)<<" ; "<<
+        (100.0 * DS.codUsage.at(k)/nCodonTotal)<<" ; "
         <<codRPFsAver.at(k)<<" ; "<< codRPFsSigma.at(k)<<" ;  "
         <<DS.geneCodeTableOrdered.at(k)<<std::endl;
       dataOutput<<ssLine.str();
       std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
     }
-    dataOutput.close();
 
 	// OUTPUT for DATASET GENES
-	std::ofstream geneDataOutput("/Users/gustafullman/Documents/src/RiboTimes/data/ZI_GeneOutput.txt");
 
     vector<double> aVector(jTot1,0.0);
 	vector<long> iVectorOrder(jTot1,0);
 
     ssLine << "Original Ordering  "<< std::endl;
-    geneDataOutput<<ssLine.str();
+    dataOutput<<ssLine.str();
 	std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
-	ssLine << "Gene# ; Gene_Name ; Starts ; #AAs  ; "<<
-	"Total_RPF ; RPF/ORF_Codon"<<std::endl;
-	geneDataOutput<<ssLine.str();
+	ssLine << "Gene# ; Gene ; Starts ; Ends ; #AAs  ; "<<
+	"gene_RPF ; RPF/ORF_Codon"<<std::endl;
+	dataOutput<<ssLine.str();
 	std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
     for (jGene = 1; jGene <= jTot; jGene++) {
             geneLength = DS.geneEnd.at(jGene) - DS.geneStart.at(jGene) + 1;
         ssLine <<jGene<<" ; "<< DS.geneName.at(jGene)<< " ; "
-        <<DS.geneStart.at(jGene)<<" ; "
+        <<DS.geneStart.at(jGene)<<" ; " <<DS.geneEnd.at(jGene)<<" ; "
         <<geneLength<<" ;  " <<DS.geneRPFtotal[jSet][jGene]<< " ; "
 		<<(DS.geneRPFtotal[jSet][jGene] / geneLength)<<std::endl;
-      geneDataOutput<<ssLine.str();
+      dataOutput<<ssLine.str();
 	  std::cout<<ssLine.str(); ssLine.clear(); ssLine.str(""); //do output and clear buffer
         aVector.at(jGene) = DS.geneRPFtotal[jSet][jGene] / geneLength;
         iVectorOrder.at(jGene) = jGene;
@@ -865,23 +912,23 @@ int jGene;
 	FindArrayOrder(aVector, iVectorOrder);  //mind assending array order
 
     ssLine<< "Genes Ordered by RPF/ORF_Codon"<<std::endl;
-    geneDataOutput<<ssLine.str();
+    dataOutput<<ssLine.str();
 	std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
-    ssLine<< "Rank ; Gene ; #AAs ; Total_RPF ; RPF/ORF_Codon" << std::endl;
-    geneDataOutput<<ssLine.str();
+    ssLine<< "Rank ; Gene ; #AAs ; gene_RPF ; RPF/ORF_Codon" << std::endl;
+    dataOutput<<ssLine.str();
 	std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
     for (j= 1; j <= jTot; j++) {
         jGene = iVectorOrder.at(j);
 		geneLength = DS.geneEnd.at(jGene) - DS.geneStart.at(jGene) + 1;
-        ssLine <<j<<"  "<< DS.geneName.at(jGene)<< "  "
-        <<geneLength<<"   " <<DS.geneRPFtotal[jSet][jGene]<< "   "
+        ssLine <<j<<" ; "<< DS.geneName.at(jGene)<< " ; "
+        <<geneLength<<" ; " <<DS.geneRPFtotal[jSet][jGene]<< " ; "
 		<<(DS.geneRPFtotal[jSet][jGene] / geneLength)<<std::endl;
-      geneDataOutput<<ssLine.str();
+      dataOutput<<ssLine.str();
 	  std::cout<<ssLine.str(); ssLine.clear(); ssLine.str(""); //do output and clear buffer
     }
-     geneDataOutput.close();
+     dataOutput.close();
  }
 
 //=============== Principle Simple FingerPrint Sub
@@ -1044,7 +1091,7 @@ void Get_ML_zHAT(const string strReportFile,long jSet, long pAsite , long pNumbe
         std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
         //std::cout<< "SubSet: "<< DS.dataSubSetName[jSet]<<std::endl;
-        ssLine<< "pAsite= "<< DS.pAsite << " pNumber= " << DS.pNumber<<std::endl;
+        ssLine<< "pA= "<< DS.pAsite << " pL= " << DS.pNumber<<std::endl;
         reportOut<<ssLine.str();
         std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
@@ -1921,7 +1968,7 @@ void Hes_Pos_ML_Refine_zFactors(const string strReportFilePath, long jSet, long 
         tLhd_delta = 0.01 * tLhd_Total_Old;
 
         std::stringstream ssLine;
-        std::ofstream ref_Log(strReportFilePath);
+        std::ofstream ref_Log(strReportFilePath, std::ios::out | std::ios::app);
 	if (iPrint == 1) {
         // OUTPUT for DATASET CODONS
      ssLine.clear(); ssLine.str("");
@@ -1951,7 +1998,7 @@ void Hes_Pos_ML_Refine_zFactors(const string strReportFilePath, long jSet, long 
         ref_Log<<ssLine.str();
         std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
-        ssLine<< "pAsite= "<< DS.pAsite << " ;pNumber= " << DS.pNumber<<std::endl;
+        ssLine<< "pA= "<< DS.pAsite << " ;pL= " << DS.pNumber<<std::endl;
         ref_Log<<ssLine.str();
         std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
@@ -2447,18 +2494,15 @@ void Hes_Pos_ML_Refine_zFactors(const string strReportFilePath, long jSet, long 
 	ref_Log.close();
 }
 // ===================================================================================================
-void Print_vFP_Full_As_MatrixB(const string strPrintOutputPath, string strText, const string strNorm,
-    const int iPrint_rpfOmega, int iPrint_Col_Corr, int pC_First, int pC_Last, RPFdataSet& DS,
-    const long jSet, vector<double>& vFP_Full, vector<double>& vFP_Sigma_Full, vector<double>& wFP_Full) {
+void Print_vFP_Full_As_MatrixB(const string strPrintOutputPath, string strNorm, string strText,
+	int pC_First, int pC_Last, RPFdataSet& DS,const long jSet,
+	int iPrint_Codon_Stat, int iPrint_rpfOmega, int iPrint_Col_Corr,
+	vector<double>& vFP_Full, vector<double>& vFP_Sigma_Full, vector<double>& wFP_Full) {
 	//
 	// Prints  vector type vFP (vector FingerPrint)  as  zFP(iPos, jCod) Matrix
 	// Rows correspond to position (iPos) and indexed by codon index (jCod) fron 1 to 64
 	//
 	// strText: the header to be printed as is
-	// strNorm: takes three values: "NATIVE", "NORMALIZED", "ZF(P,1)=1" ,
-	//            the later means that first element of the row is 1
-	// iPrint_rpfOmega: if = 1 then prints the dataset experimental FingerPrint
-	// iPrint_Col_Corr: if = 1 then report column correlations in zFP(iPos, jCod) Matrix
 	//  pC_First: 	print the rows up to this as 1
 	//  pC_Last :	print the rows afer this as 1
 	//  DS: 		data set. Used to print additional information about the dataset
@@ -2469,6 +2513,15 @@ void Print_vFP_Full_As_MatrixB(const string strPrintOutputPath, string strText, 
 	//							seen by the translating ribosome
 	// Implemented by Michael Pavlov
 	//
+	//
+
+	// strNorm: takes three values: "NATIVE", "NORMALIZED", "ZF(P,1)=1" ,
+	//            the later means that first element of the row is 1
+	// iPrint_Codon_Stat: if = 1: prints the frequency of codon encounter by Ribosome
+	// iPrint_rpfOmega: if = 1: prints the dataset experimental FingerPrint
+	// iPrint_Col_Corr: if = 1: report column correlations in zFP(iPos, jCod) Matrix
+
+
 
 	long i, j, k;
 	long pNumber, pAsite, nCodon, nLength;
@@ -2557,12 +2610,19 @@ void Print_vFP_Full_As_MatrixB(const string strPrintOutputPath, string strText, 
 
     ssLine << "DataSet: ;" << DS.dataSetName << " ; #_Genes= ;" << jTot << "; subSet# ;" << jSet
 		<< "; subSetName: ;" << DS.dataSubSetName.at(jSet)
-		<< "; dbl_Time= ;" << DS.doublingTime.at(jSet)
-		<< "; RPF_Tot= ;" << DS.dataSubSet_RPF_Total.at(jSet) << std::endl;
+		<< "; Doubling_Time= ;" << DS.doublingTime.at(jSet)
+		<< "; RPF_Total= ;" << DS.dataSubSet_RPF_Total.at(jSet) << std::endl;
 	zFP_Record<<ssLine.str();
 	std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
-    ssLine << strNorm << " :" << strText << strWeighted<< std::endl; // the title
+    ssLine << strText << ". pA is the A-site position  " <<
+	" in the local sequience of length pL." << std::endl; // pAsite Info
+	zFP_Record<<ssLine.str();
+	std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
+
+	ssLine <<" pA= ;" << pAsite << "; pL= ;"
+		<< pNumber << "; Output from position pC_First =" << pC_First
+		<< " to position pC_last=" << pC_Last <<std::endl; // Output range Info
 	zFP_Record<<ssLine.str();
 	std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
@@ -2572,13 +2632,7 @@ void Print_vFP_Full_As_MatrixB(const string strPrintOutputPath, string strText, 
 	  zFP_Record<<ssLine.str();
 	  std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
-		ssLine << "Number: "<< "; " << "; ";
-	for (j = 1; j <= nCodon; j++) {ssLine << wFP_Full.at(j) << "; ";}
-		ssLine<< std::endl;
-	  zFP_Record<<ssLine.str();
-	  std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
-
-        ssLine << "AA_name: " << " ;" << " ;";
+        ssLine << "Codon_Info: " << " ;" << " ;";
 	for (j = 1; j <= nCodon; j++) {
 		ssLine <<  DS.geneCodeTableOrdered.at(j) << " ;";
 		}
@@ -2586,9 +2640,10 @@ void Print_vFP_Full_As_MatrixB(const string strPrintOutputPath, string strText, 
 	  zFP_Record<<ssLine.str();
 	  std::cout<<ssLine.str(); ssLine.clear(); ssLine.str(" ");
 
-		ssLine << "Cod_name: " << "; Aver " << "; Sigma ";
+		ssLine << "Position: " << "; Pos_Sigma ; " ;
 	for (j = 1; j <= nCodon; j++) {
-		ssLine <<  DS.geneCodeTableOrdered.at(j).substr(0,5) << " ;";
+		ssLine <<  DS.geneCodeTableOrdered.at(j).substr(0,4) +
+		DS.geneCodeTableOrdered.at(j).substr(8,1) << " ;";
 		}
 		ssLine<< std::endl;
 	  zFP_Record<<ssLine.str();
@@ -2597,19 +2652,17 @@ void Print_vFP_Full_As_MatrixB(const string strPrintOutputPath, string strText, 
 	// print mFP and its averages
     for(i = 1; i <= pNumber; i++) {
 			k=i;
-			if(i== pAsite){k=-i;}
+			// if(i== pAsite){k=-i;}
 		if(strNorm == "NORMALIZED"){
 			ssLine<< k << " ;"
-			<< (mFP_RowAver.at(i) / mFP_RowAver.at(i)) <<" ;"
 			<< (mFP_RowSigma.at(i) / mFP_RowAver.at(i)) << " ;";
 			}
 		if(strNorm == "NATIVE"){
 			ssLine<< k << " ;"
-			<< mFP_RowAver.at(i)  <<" ;" << mFP_RowSigma.at(i)<< " ;";
+		 << mFP_RowSigma.at(i)<< " ;";
 			}
 		if(strNorm == "ZF(P,1)=1"){
 			ssLine<< k << " ;"
-			<< (mFP_RowAver.at(i)/mFP[i][1]) <<" ;"
 			<< (mFP_RowSigma.at(i)/mFP[i][1]) << " ;";
 			}
 
@@ -2638,20 +2691,8 @@ void Print_vFP_Full_As_MatrixB(const string strPrintOutputPath, string strText, 
 	  zFP_Record<<ssLine.str();
 	  std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
-    // print Matrix of Codon Statistics
-        ssLine<< "Effective Number of Codons Used= Codon Weights" << std::endl;
-    for(i = 1; i <= pNumber; i++) {
-			ssLine<< i <<  " ;" << " ;";
-        for(j = 1; j <= nCodon; j++) {
-            ssLine<< mFPW[i][j]<<" ;";
-        }
-		ssLine<< std::endl;
-	  zFP_Record<<ssLine.str();
-	  std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
-    }
-
     // print Sigma Matrix of tFP Statistics
-        ssLine<< "Sigma Errors in tFP/zFP factors: " << std::endl;
+        ssLine<< "Sigma Errors in zFP factors: " << std::endl;
     for(i = 1; i <= pNumber; i++) {
 			ssLine<< i <<  " ;" << " ;";
         for(j = 1; j <= nCodon; j++) {
@@ -2665,6 +2706,20 @@ void Print_vFP_Full_As_MatrixB(const string strPrintOutputPath, string strText, 
 	  zFP_Record<<ssLine.str();
 	  std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
     }
+
+	// print Matrix of Codon Statistics
+	if (iPrint_Codon_Stat == 1) {
+        ssLine<< "Codon Use by the Ribosome= Codon Weights in promille" << std::endl;
+    for(i = 1; i <= pNumber; i++) {
+			ssLine<< i <<  " ;" << " ;";
+        for(j = 1; j <= nCodon; j++) {
+            ssLine<< mFPW[i][j]<<" ;";
+        }
+		ssLine<< std::endl;
+	  zFP_Record<<ssLine.str();
+	  std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
+    }
+	}
 
     // print rpfOmega fingerprint counts
     if (iPrint_rpfOmega == 1) {
@@ -2681,8 +2736,10 @@ void Print_vFP_Full_As_MatrixB(const string strPrintOutputPath, string strText, 
 		  std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 		}
 	}
+
 	// print correlations of mFP matrix rows
-	ssLine<<" Pearson row correlation matrix " << std::endl;
+	 if (iPrint_Col_Corr == 1) {
+		ssLine<<" Pearson row correlation matrix " << std::endl;
 		zFP_Record<<ssLine.str();
         std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 	for(i = 1; i <= pNumber; i++) {
@@ -2694,6 +2751,7 @@ void Print_vFP_Full_As_MatrixB(const string strPrintOutputPath, string strText, 
 	  zFP_Record<<ssLine.str();
 	  std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
     }
+	}
 }
 
 // ==============================================================================
@@ -3025,9 +3083,10 @@ void Report_R2_zFP_Statistics(string strOutPutFile, long jSet, string strMode, s
 	 std::stringstream ssLine;
 		ssLine.clear(); ssLine.str("");  //Clear Stream Buffer
 
-    ssLine<< "DataSet:  "<< DS.dataSetName << "; #_Genes=" << jTot
-		<< "; subSet# =" << jSet << "; subSet Name:" <<std::endl;
-    //<< DS.dataSubSetName.at(jSet)
+    ssLine << "DataSet: ;" << DS.dataSetName << " ; #_Genes= ;" << jTot << "; subSet# ;" << jSet
+		<< "; subSetName: ;" << DS.dataSubSetName.at(jSet)
+		<< "; Doubling_Time= ;" << DS.doublingTime.at(jSet)
+		<< "; RPF_Total= ;" << DS.dataSubSet_RPF_Total.at(jSet) << std::endl;
 	statistic_Output<<ssLine.str();
     std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
@@ -3035,8 +3094,8 @@ void Report_R2_zFP_Statistics(string strOutPutFile, long jSet, string strMode, s
 	statistic_Output<<ssLine.str();
     std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
-    ssLine <<  "# ;  Gene  ; AAs ; Ui ; Ui/Cod ; R2_Time ; crPrsn ; ExperAver ; sgmExper"
-    << " ; ModelAver ; sgmModel ;  ML value ;  Max ML  ;  ML/Max ML ;  Ui/Ti ; Ti/Cod"
+    ssLine <<  "# ;  Gene  ; AAs ; Ci_Exp ; Ci_Exp/Cod ; R2_Exp_Mod ; r-Prsn ; "
+    << "  ML value ;  Max ML  ;  ML/Max ML ;  Ci_Exp/Gi_Mod ; Gi_Mod/Codon"
 	<<std::endl;
 	statistic_Output<<ssLine.str();
     std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
@@ -3055,8 +3114,6 @@ void Report_R2_zFP_Statistics(string strOutPutFile, long jSet, string strMode, s
 		ssLine << j << " ; " << CG.at(j).Name << " ; "
 		 << nGeneCod_Elong.at(j) << " ; " << nGeneRPF.at(j) << " ; " << wGene << " ; "
 		 << CG.at(j).setAB_R2 << " ; " << CG.at(j).setAB_Corr_Pearson << " ; "
-		 << CG.at(j).setA_Aver << " ; " << CG.at(j).setA_Sigma << " ; "
-		 << CG.at(j).setB_Aver << " ; " << CG.at(j).setB_Sigma << " ; "
 		 << tLhd_Gene.at(j) << " ; " << tLhd_Gene_UB.at(j) << " ; "
 		 << (tLhd_Gene.at(j) / tLhd_Gene_UB.at(j)) << " ; "
 			<< densGeneModel <<" ; " << tModelGenePerCodon << " ; " << std::endl;
@@ -3071,15 +3128,12 @@ void Report_R2_zFP_Statistics(string strOutPutFile, long jSet, string strMode, s
 	averPRcorrW = averPRcorrW / wTotal;
     averPRcorr = averPRcorr / jTot;
 
-    ssLine <<  "# ;  Gene  ; AAs ; Ui ; Ui/Cod ; R2_Time ; crPrsn ; ExperAver ; sgmExper"
-    << " ; ModelAver ; sgmModel ;  ML value ;  Max ML  ;  ML/Max ML ;  Ui/Ti ; Ti/Cod"
+    ssLine <<  "# ;  Gene  ; AAs ; Ci_Exp ; Ci_Exp/Cod ; R2_Exp_Mod ; r-Prsn ; "
+    << "  ML value ;  Max ML  ;  ML/Max ML ;  Ci_Exp/Gi_Mod ; Gi_Mod/Codon"
 	<<std::endl;
 	statistic_Output<<ssLine.str();
     std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
-    ssLine <<  ";   ;  ;  ;  ; AverPRcorr= ;" << averPRcorr << " ; " << std::endl;
-    statistic_Output<<ssLine.str();
-    std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
     ssLine <<  ";   ;  ;  ;  ; AverPRcorrW= ;" << averPRcorrW << " ; " << std::endl;
     statistic_Output<<ssLine.str();
@@ -3092,19 +3146,6 @@ void Report_R2_zFP_Statistics(string strOutPutFile, long jSet, string strMode, s
         R2 = corrME * corrME / (sigmaYM2 * sigmaXE2);
         corrME_Pearson = std::sqrt(R2);
 
-    // print All-Gene statistics
-    ssLine <<  ";   ;  ;  ;  ; R2_Time ; crPrsn ; ExperAver ; sgmExper"
-    << " ; ModelAver ; sgmModel ;  ML value ;  Max ML  ;  ML/Max ML "
-	<<std::endl;
-	statistic_Output<<ssLine.str();
-    std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
-
-    ssLine << " ;   ;     ;   ;     ; " << R2 << " ; "
-    << corrME_Pearson << " ; " << xExperAver << " ; " << std::sqrt(sigmaXE2) << " ; "
-    << yModelAver << " ; " << std::sqrt(sigmaYM2) << " ; " << tLhd_Total << " ; "
-    << tLhd_Total_UB << " ; " << (tLhd_Total / tLhd_Total_UB) << std::endl;
-	statistic_Output<<ssLine.str();
-    std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 }
 
 // =======================================================================
@@ -3639,14 +3680,14 @@ void Get_gij_Model_Time(string strPrintOutputPath, long jSet, int pC_First, int 
     }
 
 	// Print Global Time Factor Info
-	std::ofstream time_Factor_Info(strPrintOutputPath);
+	std::ofstream time_Factor_Info(strPrintOutputPath, std::ios::out | std::ios::app);
 	std::stringstream ssLine;
 	ssLine.clear(); ssLine.str("");  //Clear the String Stream Buffer
 
     ssLine << "DataSet: ;" << DS.dataSetName << " ; #_Genes= ;" << jTot << "; subSet# ;" << jSet
 		<< "; subSetName: ;" << DS.dataSubSetName.at(jSet)
-		<< "; dbl_Time= ;" << DS.doublingTime.at(jSet)
-		<< "; RPF_Tot= ;" << DS.dataSubSet_RPF_Total.at(jSet) << std::endl;
+		<< "; Doubling_Time= ;" << DS.doublingTime.at(jSet)
+		<< "; RPF_Total= ;" << DS.dataSubSet_RPF_Total.at(jSet) << std::endl;
 	time_Factor_Info<<ssLine.str();
 	std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
@@ -3714,14 +3755,14 @@ void Print_sij_gij_for_Gene(string strPrintOut, long jSet, string strGeneName,
 	pNumber = DS.pNumber; // number of positions
 
 	// Prepare to print into the file and console
-	std::ofstream sij_gij_Out(strPrintOut);
+	std::ofstream sij_gij_Out(strPrintOut, std::ios::out | std::ios::app);
 	std::stringstream ssLine;
 	ssLine.clear(); ssLine.str("");  //Clear the String Stream Buffer
 
 	ssLine << "DataSet: ;" << DS.dataSetName << " ; #_Genes= ;" << jTot << "; subSet# ;" << jSet
 		<< "; subSetName: ;" << DS.dataSubSetName.at(jSet)
-		<< "; dbl_Time= ;" << DS.doublingTime.at(jSet)
-		<< "; RPF_Tot= ;" << DS.dataSubSet_RPF_Total.at(jSet) << std::endl;
+		<< "; Doubling_Time= ;" << DS.doublingTime.at(jSet)
+		<< "; RPF_Total= ;" << DS.dataSubSet_RPF_Total.at(jSet) << std::endl;
 	sij_gij_Out<<ssLine.str();
 	std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
@@ -3734,15 +3775,15 @@ void Print_sij_gij_for_Gene(string strPrintOut, long jSet, string strGeneName,
 				nCodons = jEnd - jStart + 1; // number of codons in gene
 				nCodons1=nCodons+1;
 		// print  Gene information
-			ssLine << "Mode: " << strMode << " ; Gene_Name= " << geneName
-			<< "; nCodons=" << nCodons  << "; pAsite=" << DS.pAsite << "; pNumber=" << DS.pNumber
-			<< "; pC_First=" << DS.pC_First << "; pC_Last=" << DS.pC_Last<< std::endl;
+			ssLine << "Mode: " << strMode << "  ;  Gene= ; " << geneName
+			<< " ; nCodons=  ; " << nCodons  << " ;  pA= ; " << DS.pAsite << " ; pL= ; "
+			<< DS.pNumber << " ;  p1= ;" << DS.pC_First << " ; p2= ; " << DS.pC_Last
+			<< std::endl;
 			sij_gij_Out<<ssLine.str();
 			std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
-			ssLine << "Gene_Name= " << DS.geneName.at(jGene)
-			<< "; Abs_Model_Elong Time= " << DS.gene_Ti_Model_Time_Abs[jSet][jGene]
-			<< "Abs_Elong Time/Codon="
+			ssLine << "Gene= ; " << DS.geneName.at(jGene)
+			<< " ; Abs_Elong Time/Codon= ; "
 			<< (DS.gene_Ti_Model_Time_Abs[jSet][jGene] /DS.gene_Elong_AA.at(jGene))
 			<< std::endl;
 			sij_gij_Out<<ssLine.str();
@@ -3760,14 +3801,14 @@ void Print_sij_gij_for_Gene(string strPrintOut, long jSet, string strGeneName,
 					kCodon = kCodon + 1; //codon numbering inside gene
 				strSeqence.at(kCodon) = DS.geneCodeTableOrdered.at(indCodon); //sequence of gene
 			}
-			  ssLine << "Numb:";
+			  ssLine << "Cod_Pos:";
 			for(k = 1; k <= nCodons; k++) {
 			   ssLine << " ; "<< k ;
 			}
 			ssLine<< std::endl; sij_gij_Out<<ssLine.str();
 			std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
-				ssLine << "Cod_seq:" << " ; ";
+				ssLine << "Cod_Seq:" << " ; ";
 			for(k = 1; k <= nCodons; k++) {
 				strCodon=strSeqence.at(k);
 			   ssLine << strCodon.substr(0,4) <<strCodon.substr(8,1) << " ; ";
@@ -3776,7 +3817,7 @@ void Print_sij_gij_for_Gene(string strPrintOut, long jSet, string strGeneName,
 			std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
 			//--------------------------------------------------
-			ssLine << "sij_Exper:" << " ; ";
+			ssLine << "sij_Exp:" << " ; ";
 				kCodon = pAsite - 1;
 			for(k = jStart; k <= jEnd - pNumber; k++) {
 					kA = k + pAsite - 1;
@@ -3797,7 +3838,7 @@ void Print_sij_gij_for_Gene(string strPrintOut, long jSet, string strGeneName,
 				codValues.at(kCodon) = DS.sij_Model[jSet][kA];
 				codValueSigmas.at(kCodon) = DS.sij_Model_Sigma[jSet][kA];
 			}
-				ssLine << "sij_Model:" << " ; ";
+				ssLine << "sij_Mod:" << " ; ";
 			for(k = 1; k <= nCodons; k++) {
 			   ssLine << codValues.at(k) << " ; ";
 			}
@@ -3819,7 +3860,7 @@ void Print_sij_gij_for_Gene(string strPrintOut, long jSet, string strGeneName,
 				codValues.at(kCodon) = DS.sij_Model_Time[jSet][kA];
 				codValueSigmas.at(kCodon) = DS.sij_Model_Time_Sigma[jSet][kA];
 			}
-				ssLine << "sij_Model_T:" << " ; ";
+				ssLine << "sij_T:" << " ; ";
 			for(k = 1; k <= nCodons; k++) {
 			   ssLine << codValues.at(k) << " ; ";
 			}
@@ -3841,7 +3882,7 @@ void Print_sij_gij_for_Gene(string strPrintOut, long jSet, string strGeneName,
 				codValues.at(kCodon) = DS.gij_Model[jSet][kA];
 				codValueSigmas.at(kCodon) = DS.gij_Model_Sigma[jSet][kA];
 			}
-				ssLine << "gij_Model:" << " ; ";
+				ssLine << "gij_Mod:" << " ; ";
 			for(k = 1; k <= nCodons; k++) {
 			   ssLine << codValues.at(k) << " ; ";
 			}
@@ -3863,7 +3904,7 @@ void Print_sij_gij_for_Gene(string strPrintOut, long jSet, string strGeneName,
 				codValues.at(kCodon) = DS.gij_Model_Time[jSet][kA];
 				codValueSigmas.at(kCodon) = DS.gij_Model_Time_Sigma[jSet][kA];
 			}
-				ssLine << "gij_Model_T:" << " ; ";
+				ssLine << "gij_T:" << " ; ";
 			for(k = 1; k <= nCodons; k++) {
 			   ssLine << codValues.at(k) << " ; ";
 			}
@@ -3885,14 +3926,14 @@ void Print_sij_gij_for_Gene(string strPrintOut, long jSet, string strGeneName,
 				codValues.at(kCodon) = DS.tij_Model_Time_Abs[jSet][kA];
 				codValueSigmas.at(kCodon) = DS.tij_Model_Time_Abs_Sigma[jSet][kA];
 			}
-				ssLine << "tij_Model_T_Abs:" << " ; ";
+				ssLine << "tij_Mod_Abs:" << " ; ";
 			for(k = 1; k <= nCodons; k++) {
 			   ssLine << codValues.at(k) << " ; ";
 			}
             ssLine << std::endl; sij_gij_Out<<ssLine.str();
 			std::cout<<ssLine.str(); ssLine.clear(); ssLine.str("");
 
-				ssLine << "sigma_gij_T_Abs:" << " ; ";
+				ssLine << "sigma_tij_Mod_A:" << " ; ";
 			for(k = 1; k <= nCodons; k++) {
 			   ssLine << codValueSigmas.at(k) << " ; ";
 			}

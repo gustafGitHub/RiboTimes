@@ -13,7 +13,7 @@ CountsObj <- function(){
 
 MleAlgorithm <- function(InputFile, PathToOutput){
   
-  outputListDebug = list()
+  outputList = list()
   
   outputList1 = runMLE(InputFile, PathToOutput)
   
@@ -66,14 +66,25 @@ MleAlgorithm <- function(InputFile, PathToOutput){
   outputList$tij_Model_Time_Abs = outputList1$tij_Model_Time_Abs[[1]][2:length(outputList1$tij_Model_Time_Abs[[1]])]
   outputList$tij_Model_Time_Abs_Sigma = outputList1$tij_Model_Time_Abs_Sigma[[1]][2:length(outputList1$tij_Model_Time_Abs_Sigma[[1]])]
   
-  # outputList$zFP = matrix(outputList1$zFP[2:length(outputList1$zFP)], ncol = 15, nrow = 64)
-  # outputList$zFP_Sigma = matrix(outputList1$zFP_Sigma[2:length(outputList1$zFP_Sigma)], ncol = 15, nrow = 64)
+  #outputList$strModel_Info = outputList1$strModel_Info
+  
+  #outputList$rDwellTime = outputList1$rDwellTime
+  
+  outputList$nCodCount = outputList1$nCodCount[2:length(outputList1$nCodCount)]
+  outputList$codUsage = outputList1$codUsage[2:length(outputList1$codUsage)]
+  outputList$codRPFsAver = outputList1$codRPFsAver[2:length(outputList1$codRPFsAver)]
+  outputList$codRPFsSigma = outputList1$codRPFsSigma[2:length(outputList1$codRPFsSigma)]
   
   vFP_Full = outputList1$zFP[2:length(outputList1$zFP)]
   vFP_Sigma_Full = outputList1$zFP_Sigma[2:length(outputList1$zFP_Sigma)]
   
+  vFP_Full2 = outputList1$tML_long[2:length(outputList1$zFP)]
+  vFP_Sigma_Full2 = outputList1$tML_Sigma_long[2:length(outputList1$zFP_Sigma)]
+  
   zFP = matrix(0, nrow = 15, ncol = 64)
   zFP_Sigma = matrix(0, nrow = 15, ncol = 64)
+  tML_long = matrix(0, nrow = 15, ncol = 64)
+  tML_Sigma_long = matrix(0, nrow = 15, ncol = 64)
   
   k = 0
   for(iPos in 1:15){
@@ -81,17 +92,18 @@ MleAlgorithm <- function(InputFile, PathToOutput){
       k = k + 1
       #print(k)
       zFP[iPos, jCod] = vFP_Full[k]
+      tML_long[iPos, jCod] = vFP_Full2[k]
       zFP_Sigma[iPos, jCod] = vFP_Sigma_Full[k]
+      tML_Sigma_long[iPos, jCod] = vFP_Sigma_Full2[k]
     }
   }
   
   outputList$zFP = zFP
   outputList$zFP_Sigma = zFP_Sigma
+  outputList$tML_long = tML_long
+  outputList$tML_Sigma_long = tML_Sigma_long
   
-  outputListDebug$outputList = outputList
-  outputListDebug$outputList1 = outputList1
-  
-  return(outputListDebug)
+  return(outputList)
   
 }
 
