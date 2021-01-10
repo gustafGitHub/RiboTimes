@@ -313,6 +313,9 @@ List runMLE(string strDataSetFileName, string strDataSetFilePath){
     outputList["zFP"] = zFP_long;
     outputList["zFP_Sigma"] = zFP_Sigma_long;
     
+    outputList["tML_long"] = tML_long;
+    outputList["tML_Sigma_long"] = tML_Sigma_long;
+    
     /*
      * 
      
