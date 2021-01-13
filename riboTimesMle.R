@@ -5,6 +5,10 @@ sourceCpp("./C/RiboTimesMLE.cpp")
 InputFile = "/Users/gustafullman/Documents/src/RiboTimes/data/Demo_input_file.txt"
 PathToOutput = "/Users/gustafullman/Documents/src/RiboTimes/output/"
 
+if(!file.exists(PathToOutput)){
+  dir.create(PathToOutput)
+}
+
 MleAlgorithm <- function(InputFile, PathToOutput){
   
   outputList = list()
