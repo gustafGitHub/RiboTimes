@@ -92,10 +92,15 @@ MleAlgorithm <- function(InputFile, PathToOutput){
     }
   }
   
+  colnames(zFP) <- outputList$geneCodeTableOrdered
+  colnames(zFP_Sigma) <- outputList$geneCodeTableOrdered
+  colnames(tML_long) <- outputList$geneCodeTableOrdered
+  colnames(tML_Sigma_long) <- outputList$geneCodeTableOrdered
+  
   outputList$zFP = zFP
   outputList$zFP_Sigma = zFP_Sigma
-  #outputList$tML_long = tML_long
-  #outputList$tML_Sigma_long = tML_Sigma_long
+  #outputList$zFP_Initial = tML_long
+  #outputList$zFP_Initial_Sigma = tML_Sigma_long
   
   return(outputList)
   

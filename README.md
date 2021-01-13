@@ -95,10 +95,8 @@ The output from the code, outputList, is of the type "List" and contains the fol
 | zFP_Sigma | Sigmas of zFP |
 
 
+### Output files
 
-
-### Output to Excel
-
-The files that are written in ```PathToOutput``` can be imported to excel and figures, etc, can be plotted from there.
+The output files that are written in ```PathToOutput``` can be imported to excel and figures, etc, can be plotted from there.
 Documentation for these output files is found in the document User Guide.docx found in the /documentation folder in 
 the repository.
