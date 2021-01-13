@@ -1,7 +1,7 @@
-dataSet	FA_Titration_30000_Codons	
+dataSet	Demo_Data_Set_E_coli	
 dataSubSet_RPF_Total		2148887
 doublingTime		0.6601
-geneName	codonNames	RPFs_FA0.0
+geneName	codonNames	RPFs_FA_0
 lpp	AUG	90
 lpp	AAA	7
 lpp	GCU	114

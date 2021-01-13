@@ -2,14 +2,8 @@ library(Rcpp)
 sourceCpp("./C/RiboTimesMLE.cpp")
 #source("loadCountsTable.R")
 
-InputFile = "/Users/gustafullman/Documents/src/RiboTimes/data/ZI_30000_FA0.txt"
-PathToOutput = "/Users/gustafullman/Documents/src/RiboTimes/data/"
-fileName = "/Users/gustafullman/Documents/src/RiboTimes/data/ZI_30000_FA0_table.txt"
-
-CountsObj <- function(){
-  CountsObj<-loadCountsTable(fileName)
-  return(CountsObj)
-}
+InputFile = "/Users/gustafullman/Documents/src/RiboTimes/data/Demo_input_file.txt"
+PathToOutput = "/Users/gustafullman/Documents/src/RiboTimes/output/"
 
 MleAlgorithm <- function(InputFile, PathToOutput){
   
@@ -66,10 +60,6 @@ MleAlgorithm <- function(InputFile, PathToOutput){
   outputList$tij_Model_Time_Abs = outputList1$tij_Model_Time_Abs[[1]][2:length(outputList1$tij_Model_Time_Abs[[1]])]
   outputList$tij_Model_Time_Abs_Sigma = outputList1$tij_Model_Time_Abs_Sigma[[1]][2:length(outputList1$tij_Model_Time_Abs_Sigma[[1]])]
   
-  #outputList$strModel_Info = outputList1$strModel_Info
-  
-  #outputList$rDwellTime = outputList1$rDwellTime
-  
   outputList$nCodCount = outputList1$nCodCount[2:length(outputList1$nCodCount)]
   outputList$codUsage = outputList1$codUsage[2:length(outputList1$codUsage)]
   outputList$codRPFsAver = outputList1$codRPFsAver[2:length(outputList1$codRPFsAver)]
@@ -100,8 +90,8 @@ MleAlgorithm <- function(InputFile, PathToOutput){
   
   outputList$zFP = zFP
   outputList$zFP_Sigma = zFP_Sigma
-  outputList$tML_long = tML_long
-  outputList$tML_Sigma_long = tML_Sigma_long
+  #outputList$tML_long = tML_long
+  #outputList$tML_Sigma_long = tML_Sigma_long
   
   return(outputList)
   

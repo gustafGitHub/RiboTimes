@@ -37,6 +37,9 @@ PathToOutput = "/Path to RiboTimes folder/RiboTimes/data/"
 
 3. Run the code
 
+Most of the code is written in C++, so the code written in R is a wrapper to run this code.
+The code is documented in the document User Guide.docx in the /documentation folder included in 
+the repository. To run the code in R, type
 ```
 outputList <- MleAlgorithm(InputFile, PathToOutput)
 ```
@@ -49,45 +52,53 @@ The output from the code, outputList, is of the type "List" and contains the fol
 | ---------- | ----------- |
 | dataSetName | Name of the dataset |
 | dataSubSet_RPF_Total | Total number of RPFs in dataset |
-| doublingTime | Time factor extracted from doubling time |
+| doublingTime | Doubling time of Cell culture in h |
 | pAsite | Position of the A-site in the local context |
-| pNumber | The length of the local contaxt in codons |
-| cNumber | The number of codons = 64 |
+| pNumber | The length of the local context in codons |
+| cNumber | Number of codons = 64 |
 | geneCodeTable | Standard Genetic Code Table |
 | geneCodeTableOrdered | Re-Ordered Standard Genetic Code Table |
 | rCodonSeq | Codon sequence of Data Set |
-| geneStart | Start codon index of gene |
-| geneEnd | End codon index of gene |
-| jTot | Number of genes in data set |
-| geneCodons | Total number of codons in gene |
+| geneName | Gene names |
+| geneStart | Gene Start in the DataSet in codons |
+| geneEnd | Gene End in the DataSet in codons |
+| jTot | Number of Genes in the Data set |
+| geneCodons | Total Number of codons in a gene |
 | geneRPFtotal | Total Number of RPFs in a gene |
-| geneRPFdensity | RPF density in a gene |
-| gene_Elong_AA | Number of Codons in the inner Gene par |
-| geneRPF_Elong | Number of RPFs in the inner Gene part |
-| geneU_Elong | |
-| geneRPF_Elong_Dens | RPFs/codon=Ui/nCodons in the inner Gene part |
-| gene_Model_Density | Ui/Ti for the inner Gene part |
-| gene_Elong_N2_Time | |
-| iORFcodons | Index (from 1 to 64) that correspond to codon name |
+| geneRPFdensity | RPF density for ORF |
+| gene_Elong_AA | Number of Codons in the inner Gene part |
+| gene_Ci_Exper | Number of RPFs in the inner Gene part |
+| gene_di_Exper | RPFs/codon=Ui/nCodons in the inner Gene part |
+| gene_fi_Model | gene_fi_Model=Ci/Ti = corrected relative gene expression level |
+| gene_Gi_Model | sum of gij_Model for a gene |
+| gene_Gi_Model_Time | sum of gij_Model_Time for a gene= corrected gene elongation time |
+| gene_Ti_Model_Time_Abs | estimate of absolute time of gene elongation |
+| global_Time_Factor | global time factor used to get absolute elong cycle time in ms |
+| rpfOmegaExper | Experimental RPF fingerprint for this DataSubSet |
+| iORFcodons | Indexed (from 1 to 64) codons in the dataset |
+| indCodonOrder | Codon indexing (from 1 to 64) in re-ordered Genetic Table |
 | nRPF | RPFs ascribed to the codon in the dataset (A-site) |
-| timeTransLoc | Translocation time |
+| sij_Exper | experimental RPF scores in the inner gene regions |
+| sij_Model | model RPF scores in the inner gene regions |
+| sij_Model_Sigma | sigmas of model RPF scores |
+| sij_Model_Time | model pausing scores in the inner gene regions |
+| sij_Model_Time_Sigma | sigmas of model pausing scores |
+| pC_First | first position of the Narrow context |
+| pC_Last | last position of the Narrow context |
+| gij_Model | model gij-values in the inner gene regions |
+| gij_Model_Sigma | sigmas of gij-values |
+| gij_Model_Time | corrected model gij-values in the inner gene regions |
+| gij_Model_Time_Sigma | sigmas of corrected model gij-values |
+| tij_Model_Time_Abs | estimates of absolute cycle times at codon j in gene i |
+| tij_Model_Time_Abs_Sigma | sigmas of estimates of absolute cycle times |
+| zFP | Maximum likelihood estimates of zHAT |
+| zFP_Sigma | Sigmas of zFP |
 
 
-### Alternative output 
-
-The files that are written in ```PathToOutput``` can be imported to excel and accessed from there.
-
- 
 
 
-# Code in Visual Basic in Excel
+### Output to Excel
 
-The original code in Visual Basic in an Excel macro is found in RiboTimes/excel
-
-Instructions how to run the code is found in
-
-Instructions_for_VBA_Activation_On_Your_Window_Computer.pdf
-
-and
-
-Instructions_to_Run_RPF_to_zPC_Transformer.pdf
+The files that are written in ```PathToOutput``` can be imported to excel and figures, etc, can be plotted from there.
+Documentation for these output files is found in the document User Guide.docx found in the /documentation folder in 
+the repository.
