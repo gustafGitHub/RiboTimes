@@ -35,6 +35,12 @@ InputFile = "/Path to RiboTimes folder/RiboTimes/data/ZI_30000_FA0.txt"
 PathToOutput = "/Path to RiboTimes folder/RiboTimes/data/"
 ```
 
+### Input and output files
+
+These files are described in the document User Guide.docx found in the /documentation folder in 
+the repository.
+
+
 3. Run the code
 
 Most of the code is written in C++, so the code written in R is a wrapper to run this code.
@@ -91,12 +97,5 @@ The output from the code, outputList, is of the type "List" and contains the fol
 | gij_Model_Time_Sigma | sigmas of corrected model gij-values |
 | tij_Model_Time_Abs | estimates of absolute cycle times at codon j in gene i |
 | tij_Model_Time_Abs_Sigma | sigmas of estimates of absolute cycle times |
-| zFP | Maximum likelihood estimates of zHAT |
+| zFP | z(p,c) factors estimated by the maximum likelihood algorithm |
 | zFP_Sigma | Sigmas of zFP |
-
-
-### Output files
-
-The output files that are written in ```PathToOutput``` can be imported to excel and figures, etc, can be plotted from there.
-Documentation for these output files is found in the document User Guide.docx found in the /documentation folder in 
-the repository.
