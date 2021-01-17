@@ -79,6 +79,12 @@ struct RPFdataSet {
 
     MatrixDouble rDwellTime;
 
+	MatrixDouble zFP_HAT;					// guess z(p,c)-factor Table to print in R
+    MatrixDouble zFP_HAT_Sigma;				// guess sigmas of z(p,c)-factors to print in R
+
+	MatrixDouble zFP;						// z(p,c)-factor Table to print in R
+    MatrixDouble zFP_Sigma;					// sigmas of z(p,c)-factors to print in R
+
 	MatrixDouble gij_Model;					// model gij-values in the inner gene regions
     MatrixDouble gij_Model_Sigma;			// sigmas of gij-values
 
@@ -682,18 +688,17 @@ void Get_Sequence_RPFs(int nRPFadd, const string strDataSetFileName, RPFdataSet&
 
 	//	find vArray boundaries and copy original vArray in bArray
 	double maxValue, minValue, bAmaxi;
-	long iMax, iMin, iMaxi;
+	long  iMaxi;
 
 	// Find max and min in vArray
         maxValue = vArray.at(1);
         minValue = vArray.at(1);
-        iMax = 1;
-        iMin = 1;
+
 	for (i = 1;  i <=  mL; i++) { //step through the values
             bArray.at(i) = vArray.at(i);
             iOrderArray.at(i) = i;
-        if (vArray[i] > maxValue) {maxValue = vArray[i]; iMax = i;}
-        if (vArray[i] < minValue) {minValue = vArray[i]; iMin = i;}
+        if (vArray[i] > maxValue) {maxValue = vArray[i];}
+        if (vArray[i] < minValue) {minValue = vArray[i];}
 	}
 
 	// find the decending order of bArray values
@@ -724,7 +729,6 @@ long i , j , k , iCodon, nCodonTotal, geneLength;
 int jGene;
 
 	// Prepare to do the statistics
-		int nFus = DS.geneRPFtotal.size(); 		// The number of subsets in the dataset
 		int jSet=0;
         int cNumber = DS.geneCodeTableOrdered.size()-1;  // Number of codon in the Gene Code Table
 		int cNumber1=cNumber+1;
@@ -861,9 +865,8 @@ void Get_ML_zHAT(const string strReportFile,long jSet, long pAsite , long pNumbe
 
 	int iPrint = 1;
 
-    int nFus = DS.nRPF.size();
-    long mRow1 = DS.iORFcodons.size();
-	long mRow=mRow1-1;
+
+
     int jTot1 = DS.geneEnd.size();
 	int jTot=jTot1-1;   //number of genes in data set
     int cNumber = 64;  //Number of codons
@@ -884,7 +887,7 @@ void Get_ML_zHAT(const string strReportFile,long jSet, long pAsite , long pNumbe
 
 	long i, j, k, kA, Iter, iA, jA;
 	string strCodon;
-	long  nActive, nCol =0, pShift =0;
+	long  nActive,  pShift =0;
 	long jStart =0, jEnd =0;
 	int jGene=0, iPos =0;
 	double rpfOmega_PC =0.0, muCoff_PC =0.0, tModel_k=0.0, muCheck=0.0;
@@ -900,6 +903,14 @@ void Get_ML_zHAT(const string strReportFile,long jSet, long pAsite , long pNumbe
     MatrixDouble muCoff(pNumber1, vector<double>(cNumber1, 0.0));
     vector<double> muCoff_Cod_Sum(pNumber1);
     vector<double> gradActive(rowLength);
+
+	DS.zFP.clear(); DS.zFP_Sigma.clear();
+	DS.zFP.resize(pNumber1, vector<double>(cNumber1,0.0));
+	DS.zFP_Sigma.resize(pNumber1, vector<double>(cNumber1,0.0));
+
+	DS.zFP_HAT.clear(); DS.zFP_HAT_Sigma.clear();
+	DS.zFP_HAT.resize(pNumber1, vector<double>(cNumber1,0.0));
+	DS.zFP_HAT_Sigma.resize(pNumber1, vector<double>(cNumber1,0.0));
 
 	double elongRPF_Total=0.0, gene_Ci_Exper =0.0;
 	double tPosCodon =0, tPosCodonDiff =0, tDiff2 =0;
@@ -1168,9 +1179,9 @@ void Get_ML_zHAT(const string strReportFile,long jSet, long pAsite , long pNumbe
 			pShift = 0;
         MatrixDouble mHM, mHM1, mHS;
         vector<long> vPA;
-        int iFlagInvert;
+
         MatrixDouble mLA, mUA;
-        double det_mHS;
+
         vector<double> diagHM1_Full(cNumber1,0.0);
 	for (iPos = 1; iPos <= pNumber; iPos++) {
 
@@ -1267,6 +1278,8 @@ void Get_ML_zHAT(const string strReportFile,long jSet, long pAsite , long pNumbe
         for (indCodon = 1; indCodon <=  cNumber; indCodon++) {
             tML_long.at(pShift + indCodon) = zHAT[iPos][indCodon];
             tML_Sigma_long.at(pShift + indCodon) = std::sqrt(std::abs(diagHM1_Full.at(indCodon) / 2));
+			DS.zFP_HAT[iPos][indCod]=tML_long.at(pShift + indCodon);
+			DS.zFP_HAT_Sigma[iPos][indCod]=tML_Sigma_long.at(pShift + indCodon);
            //wML_long(pShift + indCodon) = kRow * muCoff[iPos][indCodon] / muCoff_Cod_Sum.at(iPos);
             wML_long.at(pShift + indCodon) = kRow * muCoff[iPos][indCodon] / elongRPF_Total;
         }
@@ -1321,19 +1334,19 @@ void Get_Log_Likelihood(const long& jSet, RPFdataSet& DS, MatrixDouble& zPC_Matr
   //
   // Implemented by Michael Pavlov
   //
-	long jGene, iPos, cNumber, pNumber, pAsite;
-	long  jStart, jEnd, jGeneStartShift, jTot, mRow, indCodon;
-	long i, j, k, kA;
+	long jGene, iPos,  pNumber, pAsite;
+	long  jStart, jEnd, jGeneStartShift, jTot, indCodon;
+	long k, kA;
 
 	double gene_RPF_ln_tModel, gene_RPF_ln_RPF;
 
         jTot = DS.geneEnd.size()-1; // 'number of genes in data set
-        mRow = DS.geneEnd.at(jTot); // 'number of codons in fata set
-		long mRow1=mRow+1;
+
+
         jGeneStartShift = DS.jGeneStartShift;
         pAsite = DS.pAsite;
         pNumber = DS.pNumber;
-        cNumber = 64; // Number of codons
+
 
     long nCodon_Elong, nRPF_kA;
 	double gene_Ci_Exper, t_Gene_Elong, gene_RPF_per_Codon, gene_Time_per_Codon;
@@ -1403,9 +1416,9 @@ void Get_Log_Likelihood_Only(const long& jSet, const RPFdataSet& DS, const Matri
   // Implemented by Michael Pavlov
   //
 
-	long jGene, iPos, cNumber, pNumber, pAsite;
-	long jStart, jEnd, jGeneStartShift, jTot, mRow, indCodon;
-	long i, j, k, kA;
+	long jGene, iPos, pNumber, pAsite;
+	long jStart, jEnd, jGeneStartShift, jTot, indCodon;
+	long k, kA;
 
 	double gene_RPF_ln_tModel, gene_RPF_ln_RPF;
 
@@ -1413,7 +1426,7 @@ void Get_Log_Likelihood_Only(const long& jSet, const RPFdataSet& DS, const Matri
         jGeneStartShift = DS.jGeneStartShift;
         pAsite = DS.pAsite;
         pNumber = DS.pNumber;
-        cNumber = 64; // Number of codons
+
 
     long nCodon_Elong, nRPF_kA;
 	double gene_Ci_Exper, t_Gene_Elong,  gene_Time_per_Codon;
@@ -1474,7 +1487,7 @@ void RefineStepSize_New(const int& jSet, const RPFdataSet& DS, const MatrixDoubl
 	// Implemented by Michael Pavlov
 
 	// Standard block
-	int i, j, k, iStepSize;
+	int iStepSize;
 	int iPos, pNumber, indCodon, cNumber;
 
 	// Quadratic Interpolation Var
@@ -1483,7 +1496,7 @@ void RefineStepSize_New(const int& jSet, const RPFdataSet& DS, const MatrixDoubl
 	double y31_Length, y32_Length, y21_Length, yTol;
 
 	double aCoff, bCoff, yI;
-	int iDummy, iFlag_Zero, iStepLast, iA34, iFlag;
+	int iDummy,  iStepLast, iA34, iFlag;
 
 	double stepSizeMin,  stepSizeCurr;
 	double tLhd_Total_Max, tLhd_Total, vI, dTol;
@@ -1513,7 +1526,7 @@ void RefineStepSize_New(const int& jSet, const RPFdataSet& DS, const MatrixDoubl
 
 
     // safeguard from the negatives in the new, post-shift parameter set zFP_New
-		iFlag_Zero = 0;
+
 	for(iA34 = 1; iA34 <= 12; iA34++) {
              iFlag = 0;
         for (iPos = 1; iPos <= pNumber; iPos++) {
@@ -1521,7 +1534,7 @@ void RefineStepSize_New(const int& jSet, const RPFdataSet& DS, const MatrixDoubl
                      zFP_New[iPos][indCodon] = zFP[iPos][indCodon] + stepSizeCurr * zShift[iPos][indCodon];
                    if (zFP_New[iPos][indCodon] < 0) { // we are in troubles: shift results in negative
                      iFlag = 1;
-                     iFlag_Zero = 1;
+
                     break; // exit indCodon loop
                    }
                 }
@@ -1672,9 +1685,9 @@ void Hes_Pos_ML_Refine_zFactors(const string strReportFilePath, long jSet, long 
 	int iPrint = 1;
 
 
-    int nFus = DS.nRPF.size();
+
     long mRow1 = DS.iORFcodons.size();
-	long mRow=mRow1-1;
+
     int jTot1 = DS.geneEnd.size();
 	int jTot=jTot1-1;   //number of genes in data set
     int cNumber = 64;  //Number of codons
@@ -1699,7 +1712,7 @@ void Hes_Pos_ML_Refine_zFactors(const string strReportFilePath, long jSet, long 
 	long jStart =0, jEnd =0;
 
 	int jGene, iPos , nPos, nPos1;
-	double tModel_kA=0.0,  dRPF_kA =0.0;
+	double tModel_kA=0.0;
 
 
 	int  indCodon, iCod, indCod, iC, nCodon_Elong;
@@ -1744,6 +1757,10 @@ void Hes_Pos_ML_Refine_zFactors(const string strReportFilePath, long jSet, long 
 	MatrixDouble zFP_Sigma(pNumber1, vector<double>(cNumber1,0.0));
 	MatrixDouble wFP(pNumber1, vector<double>(cNumber1,0.0));
 
+	DS.zFP.clear(); DS.zFP_Sigma.clear();
+	DS.zFP.resize(pNumber1, vector<double>(cNumber1,0.0));
+	DS.zFP_Sigma.resize(pNumber1, vector<double>(cNumber1,0.0));
+
 	MatrixDouble zFP_Weight(pNumber1, vector<double>(cNumber1,0.0));
 	MatrixDouble zShift(pNumber1, vector<double>(cNumber1,0.0));
 	MatrixDouble zFP_Old(pNumber1, vector<double>(cNumber1,0.0));
@@ -1761,8 +1778,8 @@ void Hes_Pos_ML_Refine_zFactors(const string strReportFilePath, long jSet, long 
 	MatrixLong ijH_A(pNumber1, vector<long>(cNumber1,0));
 
 
-	int iFlagInvert;
-	double det_mH_SC, det_Hes;
+
+
 	vector<double> diag_mH_PS;
 	// Load current z-Factors (or  ML Fingerprints) and Transform to matrixes
         k = 0;
@@ -1807,7 +1824,7 @@ void Hes_Pos_ML_Refine_zFactors(const string strReportFilePath, long jSet, long 
 	vector<double> diag_mH_Short(nActiveShort1,0.0);
 	vector<double> grad_PS, vDir_PS;
 	MatrixDouble mH_PS;
-	double diag_iA;
+
 
 	// Non-singular Hessian
 	MatrixDouble mH_Short(nActiveShort1, vector<double>(nActiveShort1,0.0));
@@ -2088,7 +2105,7 @@ void Hes_Pos_ML_Refine_zFactors(const string strReportFilePath, long jSet, long 
 
 	// Accelerated solution using the block-diagonal structure of Hessian
 		k = 0;
-		det_Hes=1;
+
 	for (iPos = 1; iPos <= pNumber; iPos++) {
 		// Get Hessian and Gradient for each p-position
 		// Get Gradient as one-dimention vector from its pos/codon matrix
@@ -2399,6 +2416,8 @@ void Hes_Pos_ML_Refine_zFactors(const string strReportFilePath, long jSet, long 
 			zFP_Refined_long.at(k) = coffZ * zFP[iPos][indCod] / zPosAver;
 			zFP_Sigma_Refined_long.at(k) = coffZ * std::sqrt(std::abs(diagHM1_Full[iPos][indCod])) / zPosAver;
 			wFP_Refined_long.at(k) = muCoff[iPos][indCod];
+			DS.zFP[iPos][indCod]=zFP_Refined_long.at(k);
+			DS.zFP_Sigma[iPos][indCod]=zFP_Sigma_Refined_long.at(k);
 		}
 	}
 	ref_Log.close();
@@ -2459,6 +2478,8 @@ void Print_vFP_Full_As_MatrixB(const string strPrintOutputPath, string strNorm, 
 	MatrixDouble mFP_Sigma(pNumber1, vector<double>(nCodon1,0.0));
 	MatrixDouble mFPW(pNumber1, vector<double>(nCodon1,0.0));
 
+
+
 	MatrixDouble mFPexp(pNumber1, vector<double>(nCodon1,0.0));
 	vector<double> mFPW_CodonSum(nCodon1,0.0);
 
@@ -2494,14 +2515,14 @@ void Print_vFP_Full_As_MatrixB(const string strPrintOutputPath, string strNorm, 
     Get_PCorr_Cols_mA_New(pC_First, pC_Last, mFP, mFPW, mFP_ColAver, mFP_ColSigma, mPearsonColCorr);
 
 	// find zFP column with minimal variation
-	int jCodFlat;
+
 	double sigmaMin=0.0;
-        jCodFlat = 1;
+
         sigmaMin = mFP_ColSigma.at(1);
     for (jCod = 1; jCod <= 40; jCod++) {
         if ((mFP_ColSigma.at(jCod) < sigmaMin) && (mFP_ColSigma.at(jCod) > 0)) {
             sigmaMin = mFP_ColSigma.at(jCod);
-            jCodFlat = jCod;
+
         }
     }
 
@@ -2578,7 +2599,8 @@ void Print_vFP_Full_As_MatrixB(const string strPrintOutputPath, string strNorm, 
 
 		for(j = 1; j <= nCodon; j++) {
 			if(strNorm == "NORMALIZED"){
-				ssLine<< (mFP[i][j] / mFP_RowAver.at(i)) << " ;";}
+				DS.zFP[i][j]=mFP[i][j] / mFP_RowAver.at(i);
+				ssLine<< DS.zFP[i][j] << " ;";}
 			if(strNorm == "NATIVE"){ssLine<< mFP[i][j]  << " ;";}
 			if(strNorm == "ZF(P,1)=1"){ssLine<< (mFP[i][j] /mFP[i][1]) << " ;";}
         }
@@ -2607,7 +2629,8 @@ void Print_vFP_Full_As_MatrixB(const string strPrintOutputPath, string strNorm, 
 			ssLine<< i <<  " ;" << " ;";
         for(j = 1; j <= nCodon; j++) {
 			if(strNorm == "NORMALIZED"){
-				ssLine<< (mFP_Sigma[i][j] / mFP_RowAver.at(i)) << " ;";}
+				DS.zFP_Sigma[i][j]=mFP_Sigma[i][j] / mFP_RowAver.at(i);
+				ssLine<< DS.zFP_Sigma[i][j] << " ;";}
 			if(strNorm == "NATIVE"){ssLine<< mFP_Sigma[i][j]  << " ;";}
 			if(strNorm == "ZF(P,1)=1"){
 				ssLine<< (mFP_Sigma[i][j] /mFP[i][1]) << " ;";}
@@ -2732,10 +2755,10 @@ void Get_PCorr_Cols_mA_New(long iRow_Start, long iRow_End, const MatrixDouble& m
 	//
 	// Implemented by Michael Pavlov
 	//
-	long i, j, k, iRow, jCol, mRow, nCol, mRow1, nCol1;
-    mRow1 = mA.size();
+	long i, j, k, nCol, nCol1;
+
     nCol1 = mA[1].size();
-    mRow=mRow1-1;
+
     nCol=nCol1-1;
 		mA_ColAver.clear(); mA_ColSigma.clear(); mPC.clear();
 		mA_ColAver.resize(nCol1,0.0); mA_ColSigma.resize(nCol1,0.0);
@@ -2796,31 +2819,31 @@ void Report_R2_zFP_Statistics(string strOutPutFile, long jSet, string strMode, s
 	//
 
 	long i, j, k, kA, indCodon, iPos, kRow, kCodon;
-	long  nExp, iFlagMode;
+
 	string strGeneName;
 	long cNumber, pAsite, pNumber;
 
-	long mRow, jStart, jEnd, jTot, nCodon_Elong, nCodon_Elong1, nRPF;
+	long  jStart, jEnd, jTot, nCodon_Elong, nCodon_Elong1, nRPF;
 	vector<double> xExperGene, yModelGene, wExperGene;
 	double R2, corrME, corrME_Pearson, yModelAver, xExperAver, sigmaYM2, sigmaXE2;
-	double tModelCodon, tModelGene;
+	double tModelGene;
 
 	// Likelyhood variables
 	vector<double>  geneRPFlnT;
 	double tLhd_Total, gene_RPF_ln_tModel, tLhd_Total_UB, gene_RPF_ln_RPF;
 
-	long gene_Ci_Exper, jGene, nLength;
-	double tModelGenePerCodon, tExperGenePerCodon, tExperCodon, tExperGene;
-	double densGeneExper, densGeneModel;
+	long gene_Ci_Exper, jGene;
+	double tModelGenePerCodon, tExperGenePerCodon;
+	double densGeneModel;
 
-	double t_pAsite, t_Sigma, t_Sigma2;
+	double t_pAsite,  t_Sigma2;
 	double wGene, wTotal, averPRcorrW, averPRcorr;
 
     long jTot1 = DS.geneEnd.size();
 	jTot=jTot1-1;				//number of genes in data set
     long mRow1 = DS.iORFcodons.size();
-	mRow=mRow1-1;
-    nExp = mRow;
+
+
     cNumber = 64; 				//Number of codons
 
     pNumber = DS.pNumber; 		// number of positions
@@ -2867,7 +2890,7 @@ void Report_R2_zFP_Statistics(string strOutPutFile, long jSet, string strMode, s
         jEnd = DS.geneEnd.at(jGene);
 
                 tModelGene = 0.0;
-                tExperGene = 0.0;
+
                 gene_Ci_Exper = 0.0;
                 gene_RPF_ln_tModel = 0.0;
                 gene_RPF_ln_RPF = 0.0;
@@ -2890,7 +2913,7 @@ void Report_R2_zFP_Statistics(string strOutPutFile, long jSet, string strMode, s
                 t_pAsite = t_pAsite * zFP[iPos][indCodon];
                 t_Sigma2 = t_Sigma2 + zFP_Sigma2[iPos][indCodon];
             }
-                t_Sigma = t_pAsite * std::sqrt(t_Sigma2);
+                //t_Sigma = t_pAsite * std::sqrt(t_Sigma2);
 
               kCodon = kCodon + 1; // current codon in gene arrays
                 yModelGene.at(kCodon) = t_pAsite;
@@ -3065,11 +3088,11 @@ void Get_X_Y_Correlation(long kStart, long kEnd, vector<double>& X, vector<doubl
 	//
 	//  Calculates correlation  between two data sets X and Y
 	//
-	long i, j, k, mL, mL1;
+	long  k;
 	double vX, vY, vW, totW, averX2, averY2;
 
-	mL1 = X.size();
-	mL=mL1-1;
+	//mL1 = X.size();
+
 	// Get Averages and Sigmas
         averX = 0.0;
         averY = 0.0;
@@ -3123,10 +3146,10 @@ void VB_Gauss_Solve(int iP, const MatrixDouble& mA,
 	//
 	// Implemented by Michael Pavlov
 	//
-	long i, j, k, jR, j1, iFlag;
+	long i, j, k, jR, j1;
 	long mRow, nCol, mRow1, nCol1, nCol2;
-	long jP =0;
-	double vj, zj;
+
+	double zj;
 	double rRow, rRowMax, rRowMaxAbs, rRowAbs, mLij, mUjj, zTol;
 	long iRowMax ;
 	zTol= 0.0000000000000001;
@@ -3200,7 +3223,7 @@ void VB_Gauss_Solve(int iP, const MatrixDouble& mA,
 				}
 		}
 		else {//put real zeroes to stress that mUjj=0 and skip the elimination step
-					iFlag = 2;  // note the matrix mA singularity
+					//iFlag = 2;  // note the matrix mA singularity
 				for (i = j; i<=mRow; i++) {
 					mU[i][j] = 0;
 				}
@@ -3237,7 +3260,7 @@ void VB_LUPA_Invert(int iP, const MatrixDouble& mA, MatrixDouble& mAM1){
 	// mA:  input,  mA is the matrix to be LUP factorized
 	// mAM1:  output, inverted matrix mA
 	//
-	long i, j, k, jR, j1, iFlag;
+	long i, j, k, jR, j1;
 	long mRow, nCol, mRow1, nCol1;
 	long jP =0;
 	double vj, zj;
@@ -3309,7 +3332,7 @@ void VB_LUPA_Invert(int iP, const MatrixDouble& mA, MatrixDouble& mAM1){
 				}
 		}
 		else {//put real zeroes to stress that mUjj=0 and skip the elimination step
-					iFlag = 2;  // note the matrix mA singularity
+					//iFlag = 2;  // note the matrix mA singularity
 				for (i = j; i<=nCol; i++) {
 					mU[i][j] = 0;
 				}
@@ -3385,7 +3408,7 @@ void VB_LUPA_Invert(int iP, const MatrixDouble& mA, MatrixDouble& mAM1){
 			if (std::abs(mUjj) > zTol) {
 				zj = v[j] / mUjj;
 			}
-			else{iFlag=2;}
+			//else{iFlag=2;}
 				z[j] = zj;
 				mAM1[j][k] = zj;
 			for(i = 1; i<= j; i++){
@@ -3449,7 +3472,7 @@ void Get_gij_Model_Time(string strPrintOutputPath, long jSet, int pC_First, int 
 
 	//calculate gij_Mod and gij_Mod_Time
 	double t_pAsite, t_Sigma, t_Sigma2;
-	double g_pAsiteBias, g_SigmaBias, g_SigmaBias2;
+	double g_pAsiteBias,  g_SigmaBias2;
 	double g_pAsiteMod, g_SigmaMod, g_SigmaMod2;
 
 	double t_GeneElongModel_Time, g_GeneElongModel;
@@ -3497,7 +3520,7 @@ void Get_gij_Model_Time(string strPrintOutputPath, long jSet, int pC_First, int 
 						}
 				}
                 t_Sigma = t_pAsite * std::sqrt(t_Sigma2);
-                g_SigmaBias = g_pAsiteBias * std::sqrt(g_SigmaBias2);
+                // g_SigmaBias = g_pAsiteBias * std::sqrt(g_SigmaBias2);
 
                 g_pAsiteMod = g_pAsiteBias * t_pAsite;
                 g_SigmaMod2 = g_SigmaBias2 + t_Sigma2;
@@ -3571,9 +3594,9 @@ void Get_gij_Model_Time(string strPrintOutputPath, long jSet, int pC_First, int 
 		DS.global_Time_Factor.at(jSet) = global_Time_Factor; // record global time factor
 
 
-    double doubling_Cell_Time, doubling_Cell_Coff;
+
     // Get absolute times
-         doubling_Cell_Time = DS.doublingTime.at(jSet);
+         // doubling_Cell_Time = DS.doublingTime.at(jSet);
     for(jGene = 1; jGene <=  jTot; jGene++) {
 			jStart = DS.geneStart.at(jGene);
 			jEnd = DS.geneEnd.at(jGene);
@@ -3649,16 +3672,16 @@ void Print_sij_gij_for_Gene(string strPrintOut, long jSet, string strGeneName,
 	//  DS:     	input/output, the source of information about data set, like sij, gij,
 	//                      codons, pNumber, pAsite, etc.
 	//
-	long i, j, k, kA, iCodon, mRow, nCol;
-	long cNumber, rowLength, pAsite, indCodon;
-	long  pNumber, pC_First, pC_Last, iFlagMode;
+	long  k, kA;
+	long  pAsite, indCodon;
+	long  pNumber;
 	string strCodon, geneName;
 
 	vector<string> strSeqence;
 	vector<double> codValues, codValueSigmas;
-    cNumber = 64; //Number of codons
 
-	long jTot, kRow, jStart, jEnd, jGene, nCodons, nCodons1, kCodon;
+
+	long jTot,  jStart, jEnd, jGene, nCodons, nCodons1, kCodon;
 	long jTot1 = DS.geneEnd.size(); // number of genes +1
 	jTot=jTot1-1;
 	pAsite = DS.pAsite;

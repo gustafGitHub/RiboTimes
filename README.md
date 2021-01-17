@@ -4,7 +4,10 @@ The code is written in R and C++ (run in R through Rcpp).
 
 ### Required software
 
-This code requires R (for instance RStudio) and a C++ compiler.
+This code requires R (for instance RStudio) with the Rcpp package installed. The Rcpp package is installed by typing in R
+```install.packages("Rcpp")```
+
+If there is a problem installing Rcpp, the original code ```main.cpp``` witten in C++ is available in the folder ./C.
 
 ### Preparation of data
 
@@ -37,7 +40,7 @@ PathToOutput = "/Path to RiboTimes folder/RiboTimes/data/"
 
 ### Input and output files
 
-These files are described in the document User Guide.docx found in the /documentation folder in 
+These files are described in the document User Guide.docx found in the ./documentation folder in 
 the repository.
 
 

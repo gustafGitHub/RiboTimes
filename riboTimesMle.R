@@ -1,9 +1,8 @@
 library(Rcpp)
 sourceCpp("./C/RiboTimesMLE.cpp")
-#source("loadCountsTable.R")
 
-InputFile = "/Users/gustafullman/Documents/src/RiboTimes/data/Demo_input_file.txt"
-PathToOutput = "/Users/gustafullman/Documents/src/RiboTimes/output/"
+InputFile = "./data/Demo_input_file.txt"
+PathToOutput = "./output/"
 
 if(!file.exists(PathToOutput)){
   dir.create(PathToOutput)
