@@ -361,6 +361,11 @@ List runMLE(string strDataSetFileName, string strDataSetFilePath){
 	 outputList["pC_First"] = DS.pC_First;
 	 outputList["pC_Last"] = DS.pC_Last;
 	 
+	 outputList["zFP_HAT"] = DS.zFP_HAT;
+	 outputList["zFP_HAT_Sigma"] = DS.zFP_HAT_Sigma;
+	 outputList["zFP"] = DS.zFP;
+	 outputList["zFP_Sigma"] = DS.zFP_Sigma;
+	 
 	 outputList["gij_Model"] = DS.gij_Model;
 	 outputList["gij_Model_Sigma"] = DS.gij_Model_Sigma;
 	 
@@ -381,11 +386,11 @@ List runMLE(string strDataSetFileName, string strDataSetFilePath){
 	 
 	 // Add some other variables of interest to outputList
 	 
-	 outputList["zFP"] = zFP_long;
-	 outputList["zFP_Sigma"] = zFP_Sigma_long;
+	 //outputList["zFP"] = zFP_long;
+	 //outputList["zFP_Sigma"] = zFP_Sigma_long;
 	 
-	 outputList["tML_long"] = tML_long;
-	 outputList["tML_Sigma_long"] = tML_Sigma_long;
+	 //outputList["tML_long"] = tML_long;
+	 //outputList["tML_Sigma_long"] = tML_Sigma_long;
 	 
 	 return outputList;
 }
@@ -568,7 +573,7 @@ void Get_Sequence_RPFs(int nRPFadd, const string strDataSetFileName, RPFdataSet&
         }
         if (!(strSuffix == "")) { // mark non-standard ORFs in the data set
             geneName.at(jGene) = "_" + strORF + strSuffix;
-            k = k;
+            //k = k;
         }
 	}
 	//
@@ -1192,9 +1197,9 @@ void Get_ML_zHAT(const string strReportFile,long jSet, long pAsite , long pNumbe
 														/ muCoff[iPos][indCodon];
 				   nPosCodActive = nPosCodActive + 1;
 				}
-				else {
-				  i = i;
-				}
+				//else {
+				  //i = i;
+				//}
 			}
 		}
 
@@ -1745,7 +1750,7 @@ void RefineStepSize_New(const int& jSet, const RPFdataSet& DS, const MatrixDoubl
 	 }
         stepSize = y2;
         tLhd_Total = v2;
-        v2 = v2;
+        //v2 = v2;
 }
 
 // ============== Rapid zFP refinement
@@ -2131,7 +2136,7 @@ void Hes_Pos_ML_Refine_zFactors(const string strReportFilePath, long jSet, long 
 	}
 
     gradActiveNorm = std::sqrt(gradActiveNorm2);
-		i = i;
+		//i = i;
 	//gradActive.resize(nActive1);
 	//ijH_Active.resize(nActive1);
 
@@ -2154,7 +2159,7 @@ void Hes_Pos_ML_Refine_zFactors(const string strReportFilePath, long jSet, long 
 	if (gradActive_Norm > 0) {
        cos_vDirOld_GradNew = vDir_LogLkh_Derivative_Min / gradActive_Norm;
 	}
-    vDir_Norm2 = vDir_Norm2;
+    //vDir_Norm2 = vDir_Norm2;
 
 	// Construct a Full Block-Hessian Approximation
 	for (iPos = 1; iPos <= pNumber; iPos++) {
@@ -2285,7 +2290,7 @@ void Hes_Pos_ML_Refine_zFactors(const string strReportFilePath, long jSet, long 
 
 			//Try to increase Likelihood in the gradient direction
 			stepSize = tLhd_Total / vDirGradProjection;
-			stepSize = stepSize;
+			//stepSize = stepSize;
 	}
 
 	// Expand  vDir and zShift_Long to the full zPC-parameter space
@@ -2470,7 +2475,7 @@ void Hes_Pos_ML_Refine_zFactors(const string strReportFilePath, long jSet, long 
 						   iA = iA + 1;
 						diagHM1_Full[iPos][indCodon] =
 							diagHM1_Full[iPos][indCodon] + mHM1[iA][iA];
-						iA = iA;
+						//iA = iA;
 					}
 				}
 			}
@@ -3098,8 +3103,8 @@ void Report_R2_zFP_Statistics(string strOutPutFile, long jSet, string strMode, s
 
     }
 
-    tLhd_Total_UB = tLhd_Total_UB;
-    tLhd_Total = tLhd_Total;
+    //tLhd_Total_UB = tLhd_Total_UB;
+    //tLhd_Total = tLhd_Total;
 
 	//  Print statistics
 	std::ofstream statistic_Output(strOutPutFile);
