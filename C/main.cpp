@@ -1278,8 +1278,8 @@ void Get_ML_zHAT(const string strReportFile,long jSet, long pAsite , long pNumbe
         for (indCodon = 1; indCodon <=  cNumber; indCodon++) {
             tML_long.at(pShift + indCodon) = zHAT[iPos][indCodon];
             tML_Sigma_long.at(pShift + indCodon) = std::sqrt(std::abs(diagHM1_Full.at(indCodon) / 2));
-			DS.zFP_HAT[iPos][indCod]=tML_long.at(pShift + indCodon);
-			DS.zFP_HAT_Sigma[iPos][indCod]=tML_Sigma_long.at(pShift + indCodon);
+			DS.zFP_HAT[iPos][indCodon]=tML_long.at(pShift + indCodon);
+			DS.zFP_HAT_Sigma[iPos][indCodon]=tML_Sigma_long.at(pShift + indCodon);
            //wML_long(pShift + indCodon) = kRow * muCoff[iPos][indCodon] / muCoff_Cod_Sum.at(iPos);
             wML_long.at(pShift + indCodon) = kRow * muCoff[iPos][indCodon] / elongRPF_Total;
         }
