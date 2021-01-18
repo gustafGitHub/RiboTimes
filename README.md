@@ -34,9 +34,19 @@ source("riboTimesMle.R")
 2. Set the input and output files
 
 ```
-InputFile = "/Path to RiboTimes folder/RiboTimes/data/ZI_30000_FA0.txt"  
+InputFile = "/Path to RiboTimes folder/RiboTimes/data/Demo_input_file.txt"  
 PathToOutput = "/Path to RiboTimes folder/RiboTimes/data/"
 ```
+Those paths have default values as
+```
+InputFile = "./data/Demo_input_file.txt"
+PathToOutput = "./output/"
+```
+Assuming that the home folder in R is set as the home folder for the repository
+```
+setwd("/Path to RiboTimes/RiboTimes")
+```
+
 
 ### Input and output files
 

@@ -68,67 +68,35 @@ MleAlgorithm <- function(InputFile, PathToOutput){
   outputList$codRPFsAver = outputList1$codRPFsAver[2:length(outputList1$codRPFsAver)]
   outputList$codRPFsSigma = outputList1$codRPFsSigma[2:length(outputList1$codRPFsSigma)]
   
-  outputList$zFP_HAT = outputList1$zFP_HAT
-  outputList$zFP_HAT_Sigma = outputList1$zFP_HAT_Sigma
-  
   zFP_temp = outputList1$zFP
   zFP_Sigma_temp = outputList1$zFP_Sigma
+  zFP_HAT_temp = outputList1$zFP_HAT
+  zFP_HAT_Sigma_temp = outputList1$zFP_HAT_Sigma
   
   pNumber = MLE$pNumber
   cNumber = MLE$cNumber
   
   zFP = matrix(0, nrow = pNumber, ncol = cNumber)
   zFP_Sigma = matrix(0, nrow = pNumber, ncol = cNumber)
+  zFP_HAT = matrix(0, nrow = pNumber, ncol = cNumber)
+  zFP_HAT_Sigma = matrix(0, nrow = pNumber, ncol = cNumber)
   
   for(i in 1:pNumber){
     zFP[i,] = zFP_temp[[i + 1]][2:length(zFP_temp[[i + 1]])]
     zFP_Sigma[i,] = zFP_Sigma_temp[[i + 1]][2:length(zFP_Sigma_temp[[i + 1]])]
+    zFP_HAT[i,] = zFP_HAT_temp[[i + 1]][2:length(zFP_HAT_temp[[i + 1]])]
+    zFP_HAT_Sigma[i,] = zFP_HAT_Sigma_temp[[i + 1]][2:length(zFP_HAT_Sigma_temp[[i + 1]])]
   }
   
   colnames(zFP) <- outputList$geneCodeTableOrdered
   colnames(zFP_Sigma) <- outputList$geneCodeTableOrdered
+  colnames(zFP_HAT) <- outputList$geneCodeTableOrdered
+  colnames(zFP_HAT_Sigma) <- outputList$geneCodeTableOrdered
 
   outputList$zFP = zFP
   outputList$zFP_Sigma = zFP_Sigma
-  
-  
-  # outputList["zFP_HAT"] = DS.zFP_HAT;
-  # outputList["zFP_HAT_Sigma"] = DS.zFP_HAT_Sigma;
-  # outputList["zFP"] = DS.zFP;
-  # outputList["zFP_Sigma"] = DS.zFP_Sigma;
-  
-  # vFP_Full = outputList1$zFP[2:length(outputList1$zFP)]
-  # vFP_Sigma_Full = outputList1$zFP_Sigma[2:length(outputList1$zFP_Sigma)]
-  # 
-  # vFP_Full2 = outputList1$tML_long[2:length(outputList1$zFP)]
-  # vFP_Sigma_Full2 = outputList1$tML_Sigma_long[2:length(outputList1$zFP_Sigma)]
-  # 
-  # zFP = matrix(0, nrow = 15, ncol = 64)
-  # zFP_Sigma = matrix(0, nrow = 15, ncol = 64)
-  # tML_long = matrix(0, nrow = 15, ncol = 64)
-  # tML_Sigma_long = matrix(0, nrow = 15, ncol = 64)
-  # 
-  # k = 0
-  # for(iPos in 1:15){
-  #   for (jCod in 1:64) {
-  #     k = k + 1
-  #     #print(k)
-  #     zFP[iPos, jCod] = vFP_Full[k]
-  #     tML_long[iPos, jCod] = vFP_Full2[k]
-  #     zFP_Sigma[iPos, jCod] = vFP_Sigma_Full[k]
-  #     tML_Sigma_long[iPos, jCod] = vFP_Sigma_Full2[k]
-  #   }
-  # }
-  # 
-  # colnames(zFP) <- outputList$geneCodeTableOrdered
-  # colnames(zFP_Sigma) <- outputList$geneCodeTableOrdered
-  # colnames(tML_long) <- outputList$geneCodeTableOrdered
-  # colnames(tML_Sigma_long) <- outputList$geneCodeTableOrdered
-  # 
-  # outputList$zFP = zFP
-  # outputList$zFP_Sigma = zFP_Sigma
-  #outputList$zFP_Initial = tML_long
-  #outputList$zFP_Initial_Sigma = tML_Sigma_long
+  outputList$zFP_HAT = zFP_HAT
+  outputList$zFP_HAT_Sigma = zFP_HAT_Sigma
   
   return(outputList)
   
