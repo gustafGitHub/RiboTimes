@@ -173,7 +173,7 @@ int main(){
 	string outPutDatasetStatistics=
 	"C:\\Users\\MikeP\\My Documents\\CPP_Program_Languadge\\CodeBlockCpp\\DS_Stat_OutPut.txt";
 	std::ofstream osu(outPutDatasetStatistics, std::ios::out | std::ios::trunc);
-    // osu<<"___"<<std::endl;
+   
     osu.close();
 	Print_DataSet_Statistics(outPutDatasetStatistics,DS);
 
@@ -200,7 +200,7 @@ int main(){
 	string zFP_Refinement_Log=
     "C:\\Users\\MikeP\\My Documents\\CPP_Program_Languadge\\CodeBlockCpp\\Refinement_Log.txt";
     std::ofstream osa(zFP_Refinement_Log, std::ios::out | std::ios::trunc);
-    //osa<<"___"<<std::endl;
+   
     osa.close();
 
 	Get_ML_zHAT(zFP_Refinement_Log,jSet,pAsite,pNumber,jGeneStartShift,DS,
@@ -212,7 +212,7 @@ int main(){
         string strText="First guess zHAT coefficients";
         int pC_First=1;
         int pC_Last=pNumber;
-		string strNorm="NORMALIZED";
+		string strNorm="NATIVE";
 		int iPrint_Codon_Stat=0;  	// do not print codon statistics
 		int iPrint_rpfOmega=0;		// do not print rpf_Omega
 		int iPrint_Col_Corr=0;		// do not print Col_Corr of z(p,c) Matrix
