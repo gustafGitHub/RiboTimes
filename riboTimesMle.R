@@ -73,8 +73,8 @@ MleAlgorithm <- function(InputFile, PathToOutput){
   zFP_HAT_temp = outputList1$zFP_HAT
   zFP_HAT_Sigma_temp = outputList1$zFP_HAT_Sigma
   
-  pNumber = MLE$pNumber
-  cNumber = MLE$cNumber
+  pNumber = outputList$pNumber
+  cNumber = outputList$cNumber
   
   zFP = matrix(0, nrow = pNumber, ncol = cNumber)
   zFP_Sigma = matrix(0, nrow = pNumber, ncol = cNumber)
