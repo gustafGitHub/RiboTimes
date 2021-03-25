@@ -412,6 +412,7 @@ void Get_Sequence_RPFs(int nRPFadd, const string strDataSetFileName, RPFdataSet&
 	string strCodon, strCodonORF, strAA;
 	long i=0, j=0, k=0, iCodon;
 	long cNumber, indCodon, jSet=0, nFus, kRow, jFus;
+	//long iFlagProblem=1;
 
 	// Gene Code Table
 	cNumber = 64; //Number of codons
@@ -997,7 +998,7 @@ void Get_ML_zHAT(const string strReportFile,long jSet, long pAsite , long pNumbe
     MatrixDouble zHAT_Old(pNumber1, vector<double>(cNumber1, 0.0));
     MatrixDouble muCoff(pNumber1, vector<double>(cNumber1, 0.0));
     vector<double> muCoff_Cod_Sum(pNumber1);
-    vector<double> gradActive(rowLength);
+    vector<double> gradActive(rowLength1);
 
 	DS.zFP.clear(); DS.zFP_Sigma.clear();
 	DS.zFP.resize(pNumber1, vector<double>(cNumber1,0.0));
