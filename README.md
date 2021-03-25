@@ -25,7 +25,11 @@ git clone https://github.com/gustafGitHub/RiboTimes.git
 
 ### Run code
 
-1. Load the R source code and compile the C++ code by typing
+1. Set the home folder in R to the repository containing Ribotimes
+```
+setwd("/Path to RiboTimes/RiboTimes")
+```
+Load the R source code and compile the C++ code by typing
 
 ```
 source("riboTimesMle.R")
@@ -42,16 +46,21 @@ Those paths have default values as
 InputFile = "./data/Demo_input_file.txt"
 PathToOutput = "./output/"
 ```
-Assuming that the home folder in R is set as the home folder for the repository
-```
-setwd("/Path to RiboTimes/RiboTimes")
-```
 
 
 ### Input and output files
 
 These files are described in the document User Guide.docx found in the ./documentation folder in 
-the repository.
+the repository. The demo data sets are found in the /data/ directory. 
+The main demo data set is from the E. coli strain used in the article. 
+
+Demo_input_file.txt
+
+Two additional demo datasets are contained in this repository. Those datasets
+contains Yeast data.
+
+Yeast_RNAseA_Demo_300_Gene_Input_File.txt
+Yeast_MNAse_Demo_300_Gene_Input_File.txt
 
 
 3. Run the code
